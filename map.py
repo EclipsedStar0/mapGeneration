@@ -12,7 +12,15 @@ class Map:
     def __init__(self):
         self.width = 1024
         self.height = 576
-        self.adjustFactor = 1
+
+        # You can change the adjustFactor to easily scale the map, so a factor of 2, would make it 4 times smaller, 4 would make it 16 times smaller, 8 would make it 64 times smaller, etc.
+        self.adjustFactor = 16
+
+        # For optimal generation, keep radial search between 0 and 5, increase slightly if you drop adjust factor
+        self.radialSearch = int(32/self.adjustFactor)
+
+        self.multiThreading = False
+
         self.columns, self.rows = 1024 // self.adjustFactor, 576 // self.adjustFactor
         # self.columns, self.rows = 256, 144
         # self.columns, self.rows = 32, 18
@@ -22,22 +30,22 @@ class Map:
         # Seed must have all 0-9 numbers, and be within 24 digits
 
         seed = 544786120398304714620491
-        random.seed(544786120398304714620491)
+        random.seed(seed)
 
         # self.SCREEN = pygame.display.set_mode((self.width*self.adjustFactor, self.height*self.adjustFactor+self.adjustFactor*8))
 
         self.terrainTypes = {
             "Ice": {
                 "RegionSelChance": 20,
-                "NodeSelChance": 10,
+                "NodeSelChance": 30,
                 "Diffusion": 0.05,
                 "Color": (255, 255, 255),
                 "PTQ": (0, 25),
-                "HPTQ": (25, 28)
+                "HPTQ": (0, 28)
             },
             "Tundra": {
                 "RegionSelChance": 20,
-                "NodeSelChance": 20,
+                "NodeSelChance": 35,
                 "Diffusion": 0.05,
                 "Color": (230, 230, 230),
                 "PTQ": (23, 35),
@@ -45,7 +53,7 @@ class Map:
             },
             "Taiga": {
                 "RegionSelChance": 20,
-                "NodeSelChance": 25,
+                "NodeSelChance": 35,
                 "Diffusion": 0.25,
                 "Color": (160, 180, 160),
                 "PTQ": (25, 35),
@@ -61,7 +69,7 @@ class Map:
             },
             "Grassland": {
                 "RegionSelChance": 20,
-                "NodeSelChance": 40,
+                "NodeSelChance": 30,
                 "Diffusion": 0.10,
                 "Color": (70, 200, 50),
                 "PTQ": (43, 68),
@@ -69,7 +77,7 @@ class Map:
             },
             "Plains": {
                 "RegionSelChance": 20,
-                "NodeSelChance": 30,
+                "NodeSelChance": 35,
                 "Diffusion": 0.05,
                 "Color": (150, 200, 50),
                 "PTQ": (65, 85),
@@ -81,7 +89,7 @@ class Map:
                 "Diffusion": -0.05,
                 "Color": (220, 190, 50),
                 "PTQ": (80, 100),
-                "HPTQ": (75, 80)
+                "HPTQ": (75, 100)
             },
             "Oasis": {
                 "RegionSelChance": 20,
@@ -123,6 +131,127 @@ class Map:
         self.generateDisplay()
 
     def generateMap(self):
+
+        def distToSplit(nodeNum1, nodeNum2):
+            nodeNum1x, nodeNum1y = nodeNum1 % self.columns, int(nodeNum1 / self.columns)
+            nodeNum2x, nodeNum2y = nodeNum2 % self.columns, int(nodeNum2 / self.columns)
+            return pow(pow(nodeNum2x-nodeNum1x, 2) + pow(nodeNum2y-nodeNum1y, 2), 0.5)
+
+        def distToGiven(nodeNum1x, nodeNum1y, nodeNum2x, nodeNum2y):
+            return pow(pow(nodeNum2x-nodeNum1x, 2) + pow(nodeNum2y-nodeNum1y, 2), 0.5)
+
+        instancedNodes = dict()
+
+        for row in range(0, self.rows):
+
+            # Get base weights based off of lattitude
+
+            lattitudePQT = 100 - abs(1 - 2 * row / self.rows) * 100
+            terrainWeightArr = dict()
+
+            for terrainEntry in self.terrainTypes:
+                terrainPTQ = self.terrainTypes.get(terrainEntry).get("PTQ")
+                terrainHPTQ = self.terrainTypes.get(terrainEntry).get("HPTQ")
+                if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
+                    fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
+                    # Fetch our distance from the center of the range
+                    temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 20
+                    fetchedWeight = max(fetchedWeight - pow(temp, 1.1), 1)
+                    terrainWeightArr[terrainEntry] = fetchedWeight
+                elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
+                    fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
+                    # Fetch our distance from the center of the range
+                    temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 20
+                    fetchedWeight = max(fetchedWeight - pow(temp, 2.5), 1)
+                    terrainWeightArr[terrainEntry] = fetchedWeight
+
+            for column in range(0, self.columns):
+                nodeNum = row * self.columns + column
+                self.nodeTerrainData[nodeNum] = dict()
+                self.nodeTerrainData[nodeNum]["Weights"] = terrainWeightArr
+            if len(terrainWeightArr) < 1:
+                print("Missing potential selection!!")
+                raise Exception
+
+        maxNodes = self.columns * self.rows
+
+        while len(instancedNodes) < maxNodes:
+            nodeNum = random.randint(0, maxNodes-1)
+            while nodeNum in instancedNodes:
+                nodeNum = random.randint(0, maxNodes-1)
+            nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
+
+            # print("---Different Node Num----")
+            # print(100 - abs(1 - 2 * nodeY / self.rows) * 100)
+
+            diffuseThreads = []
+
+            for cY in range(max(nodeY - self.radialSearch, 0), min(nodeY + self.radialSearch, self.rows)):
+                for cX in range(max(nodeX - self.radialSearch, 0), min(nodeX + self.radialSearch, self.columns)):
+                    diffuseNodeNum = cY * self.columns + cX
+                    if diffuseNodeNum in instancedNodes and diffuseNodeNum != nodeNum:
+                        if self.multiThreading:
+                            newThread = customThread.mapRadialSearchThread(nodeX, nodeY, cX, cY, self.rows, self.columns, self.radialSearch, self.terrainTypes, self.nodeTerrainData)
+                            newThread.start()
+                            diffuseThreads.append(newThread)
+                        else:
+                            distToDiffuseNode = distToGiven(nodeX, nodeY, cX, cY)
+                            if distToDiffuseNode <= self.radialSearch:
+                                # We fall within the boundaries to affect this node
+                                diffuseTerrainInfo = self.nodeTerrainData.get(diffuseNodeNum)
+                                diffuseTerrain = diffuseTerrainInfo.get("ChosenTerrain")
+                                terrainPTQ = self.terrainTypes.get(diffuseTerrain).get("PTQ")
+                                terrainHPTQ = self.terrainTypes.get(diffuseTerrain).get("HPTQ")
+                                lattitudePQT = 100 - abs(1 - 2 * cY / self.rows) * 100
+
+                                diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
+                                if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
+                                    diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
+                                    # Fetch our distance from the center of the range
+                                    temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 50
+                                    diffuseWeight = max(diffuseWeight - pow(temp, 1.1), 1)
+                                elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
+                                    diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
+                                    # Fetch our distance from the center of the range
+                                    temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
+                                    diffuseWeight = max(diffuseWeight - pow(temp, 2.5), 1)
+                                else:
+                                    diffuseWeight *= 0.25
+
+                                diffuseWeight = diffuseWeight / pow(distToDiffuseNode, 0.7)
+
+                                if diffuseTerrain not in self.nodeTerrainData.get(nodeNum).get("Weights"):
+                                    self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = diffuseWeight
+                                else:
+                                    self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = pow(pow(diffuseWeight, 2) + pow(self.nodeTerrainData.get(nodeNum).get("Weights").get(diffuseTerrain), 2), 0.5)
+
+            if self.multiThreading:
+                for thread in diffuseThreads:
+                    thread.join()
+                    diffuseWeight, diffuseTerrain, mode = thread.getVal()
+                    if mode:
+                        if diffuseTerrain not in self.nodeTerrainData.get(nodeNum).get("Weights"):
+                            self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = diffuseWeight
+                        else:
+                            self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = pow(pow(diffuseWeight, 2) + pow(
+                                self.nodeTerrainData.get(nodeNum).get("Weights").get(diffuseTerrain), 2), 0.5)
+
+            proxyTArr, proxyWeightArr = [], []
+            for terrainType in self.nodeTerrainData.get(nodeNum).get("Weights"):
+                proxyTArr.append(terrainType)
+                proxyWeightArr.append(self.nodeTerrainData.get(nodeNum).get("Weights").get(terrainType))
+            try:
+                designatedTerrain = random.choices(proxyTArr, proxyWeightArr, k=1)[0]
+                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                instancedNodes[nodeNum] = True
+            except ValueError:
+                print(proxyTArr)
+                print(proxyWeightArr)
+                print(self.nodeTerrainData.get(nodeNum))
+                print(len(instancedNodes))
+                raise Exception
+
+    def generateMapOld1(self):
         for row in range(0, self.rows):
             lattitudePQT = 100 - abs(1 - 2 * row / self.rows) * 100
             allowedTerrainsForLAT = []
@@ -237,13 +366,8 @@ class Map:
             for row in range(0, self.rows):
                 for column in range(0, self.columns):
                     nodeNum = row * self.columns + column
-                    try:
-                        color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
-                        pygame.draw.rect(self.SCREEN, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
-                    except:
-                        print(f'CRASHED FROM NODENUM: {nodeNum}; {column}, {row}')
-                        pygame.draw.rect(self.SCREEN, (0, 0, 0), (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
-                        raise Exception
+                    color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
+                    pygame.draw.rect(self.SCREEN, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
 
         drawTheInterface()
         pygame.display.update()
@@ -261,4 +385,3 @@ class Map:
 
     def fetchTerrainData(self):
         return self.nodeTerrainData
-

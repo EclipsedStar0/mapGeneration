@@ -25,3 +25,55 @@ class noiseGenThread(threading.Thread):
 
     def getVal(self):
         return self.noiseVal, self.column, self.row
+
+
+# noinspection PyPep8Naming
+class mapRadialSearchThread(threading.Thread):
+    def __init__(self, nodeX, nodeY, cX, cY, rows, columns, radialSearch, terrainTypes, nodeTerrainData):
+        threading.Thread.__init__(self)
+        self.diffuseWeight = 0
+        self.nodeX, self.nodeY = nodeX, nodeY
+        self.cX, self.cY = cX, cX
+        self.rows, self.columns = rows, columns
+        self.radialSearch = radialSearch
+        self.terrainTypes = terrainTypes
+        self.nodeTerrainData = nodeTerrainData
+        self.mode = False
+        self.diffuseTerrain = 'None'
+
+    def run(self):
+        distToDiffuseNode = pow(pow(self.nodeX-self.cX, 2)+pow(self.nodeY-self.cY, 2), 0.5)
+        diffuseNodeNum = self.cY * self.columns + self.cX
+        if distToDiffuseNode <= self.radialSearch:
+            self.mode = True
+            # We fall within the boundaries to affect this node
+            diffuseTerrainInfo = self.nodeTerrainData.get(diffuseNodeNum)
+            if diffuseTerrainInfo is not None:
+                if diffuseTerrainInfo.get("ChosenTerrain") is not None:
+                    self.diffuseTerrain = diffuseTerrainInfo.get("ChosenTerrain")
+                    terrainPTQ = self.terrainTypes.get(self.diffuseTerrain).get("PTQ")
+                    terrainHPTQ = self.terrainTypes.get(self.diffuseTerrain).get("HPTQ")
+                    lattitudePQT = 100 - abs(1 - 2 * self.cY / self.rows) * 100
+
+                    self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
+                    if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
+                        self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
+                        # Fetch our distance from the center of the range
+                        temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 50
+                        self.diffuseWeight = max(self.diffuseWeight - pow(temp, 1.1), 1)
+                    elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
+                        self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
+                        # Fetch our distance from the center of the range
+                        temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
+                        self.diffuseWeight = max(self.diffuseWeight - pow(temp, 2.5), 1)
+                    else:
+                        self.diffuseWeight *= 0.25
+
+                    self.diffuseWeight = self.diffuseWeight / pow(distToDiffuseNode, 0.7)
+                else:
+                    self.mode = False
+            else:
+                self.mode = False
+
+    def getVal(self):
+        return self.diffuseWeight, self.diffuseTerrain, self.mode
