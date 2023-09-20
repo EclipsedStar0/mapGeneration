@@ -15,8 +15,12 @@ class Map:
         self.adjustFactor = 4
 
         # For optimal generation, keep radial search between 0 and 5, increase slightly if you drop adjust factor
-        # self.radialSearch = int(32/self.adjustFactor)
-        self.radialSearch = 4
+        self.radialSearch = min(int(32 / self.adjustFactor), 4)
+        # self.radialSearch = 4
+
+        # Computation Time Alert: Adjust 2, Radial 6 has a time of 28.9 seconds
+        # Be Advised: Adjust 1, Radial 32 has a time exceeding known limits (+30 minutes)
+        # A1, R4 has a time of 58.19 seconds
 
         # NOTE: Currently multithreading is VERY Ineffective, taking around ~44 times longer with blocky terrain following the lattitude bands
         self.multiThreading = False
