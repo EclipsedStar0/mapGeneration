@@ -10,25 +10,106 @@ class Display:
         self.nodeTerrainData = self.worldGen.getTerrainData()
         self.terrainTypes = self.worldGen.getTerrainTypes()
         self.width, self.height = 1024, 576
+        self.addedHeight = 50
         self.columns, self.rows = self.width // self.adjustFactor, self.height // self.adjustFactor
+
+        # Adding some extra height just for buttons
+        # Adding some extra height just for buttons
+        self.height += self.addedHeight
+
+        self.guiDisplayData = dict()
 
         pygame.init()
         self.SCREEN = pygame.display.set_mode((self.width, self.height))
         self.generateDisplay()
 
     def generateDisplay(self):
-        pass
+        # Clear the stored data as we're regenerating the display from scratch
+        self.guiDisplayData = dict()
         ''' Draw the display '''
 
+        def glow(rgbTuple):
+            redC, greenC, blueC = rgbTuple
+            redC = int(max(min(redC - 5, 255), 0))
+            greenC = int(max(min(greenC + 7, 255), 0))
+            blueC = int(max(min(blueC + 15, 255), 0))
+            return redC, greenC, blueC
+
+        def greyOut(rgbTuple):
+            redC, greenC, blueC = rgbTuple
+            redC = int(max(min(redC - 35, 255), 20))
+            greenC = int(max(min(greenC - 50, 255), 20))
+            blueC = int(max(min(blueC - 75, 255), 20))
+            return redC, greenC, blueC
+
         def drawTheInterface():
-            self.SCREEN.fill((20, 10, 30))
+            screenSurface = pygame.Surface((self.width, self.height))
+            screenSurface.fill((20, 10, 30))
+            mode = self.guiDisplayData.get("Mode")
+            if mode is None:
+                self.guiDisplayData["Mode"] = "Terrain"
+                mode = "Terrain"
+
+            # Draw Terrain Data
             for row in range(0, self.rows):
                 for column in range(0, self.columns):
                     nodeNum = row * self.columns + column
-                    color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
-                    pygame.draw.rect(self.SCREEN, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
+                    color = (0, 0, 0)
+                    if mode == "Terrain":
+                        color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
+                    elif mode == "Elevation":
+                        nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
+                        if nodeElevation is None:
+                            print(self.nodeTerrainData.get(nodeNum))
+                        if nodeElevation < -5:
+                            color = (0, 0, 50)
+                        elif nodeElevation < -2:
+                            color = (0, 0, 80)
+                        elif nodeElevation < 1:
+                            color = (0, 0, 120)
+                        elif nodeElevation < 2:
+                            color = (255, 235, 205)
+                        elif nodeElevation < 4:
+                            color = (0, 180, 0)
+                        elif nodeElevation < 5:
+                            color = (0, 130, 0)
+                        elif nodeElevation < 6:
+                            color = (30, 130, 0)
+                        elif nodeElevation < 8:
+                            color = (50, 110, 0)
+                        elif nodeElevation < 10:
+                            color = (75, 60, 0)
+                        elif nodeElevation < 12:
+                            color = (120, 30, 0)
+                        else:
+                            color = (180, 20, 0)
+                    pygame.draw.rect(screenSurface, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
 
-        drawTheInterface()
+            # Draw bottom row buttons
+            startHeight = self.height - self.addedHeight
+            terrainC = (70, 170, 70)
+            elevationC = (170, 70, 70)
+
+            if mode == "Terrain": terrainC = greyOut(terrainC)
+            elif mode == "Elevation": elevationC = greyOut(elevationC)
+            terrainBTN = pygame.draw.rect(screenSurface, terrainC, (self.width * 0.05, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            self.guiDisplayData["Buttons"] = {
+                "Terrain": terrainBTN,
+                "Elevation": elevationBTN
+            }
+
+            return screenSurface
+
+        returnedScreenSurface = drawTheInterface()
+        self.SCREEN.blit(returnedScreenSurface, (0, 0))
+        pygame.mouse.set_visible(False)
+        cursorSurface = pygame.Surface((self.width, self.height), pygame.SRCALPHA, 32)
+        cursorSurface.fill((0, 0, 0, 0))
+        pos = pygame.mouse.get_pos()
+        cursorCircle = pygame.draw.circle(cursorSurface, (20, 80, 140), (pos[0], pos[1]), 8)
+        self.SCREEN.blit(cursorSurface, (0, 0))
+
         pygame.display.update()
 
         '''User Interactions'''
@@ -40,7 +121,44 @@ class Display:
                 playerRect = pygame.Rect(pos[0] - 1, pos[1] - 1, 2, 2)
 
                 if userEvent.type == pygame.QUIT:
+                    success = True
                     self.gameObj.endGame()
+
+                elif userEvent.type == pygame.KEYDOWN:
+                    if userEvent.key == pygame.K_ESCAPE:
+                        success = True
+                        self.gameObj.endGame()
+
+                elif userEvent.type == pygame.MOUSEBUTTONDOWN:
+                    if pygame.mouse.get_pressed()[0]:
+                        # We are left-clicking
+                        btnCollision = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
+                        if btnCollision:
+                            buttonName = btnCollision[0]
+                            buttonCollidedWith = btnCollision[1]
+                            if self.guiDisplayData.get("Mode") != buttonName:
+                                self.guiDisplayData["Mode"] = buttonName
+                                returnedScreenSurface = drawTheInterface()
+                                self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                                cursorSurface.fill((0, 0, 0, 0))
+                                cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                                self.SCREEN.blit(cursorSurface, (0, 0))
+                                pygame.display.update()
+
+                elif userEvent.type == pygame.MOUSEMOTION:
+                    self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                    cursorSurface.fill((0, 0, 0, 0))
+                    btnCollision = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
+                    if btnCollision:
+                        buttonName = btnCollision[0]
+                        buttonCollidedWith = btnCollision[1]
+
+                        if self.guiDisplayData.get("Mode") != buttonName:
+                            pygame.draw.rect(cursorSurface, (255, 255, 255, 32), buttonCollidedWith)
+
+                    cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                    self.SCREEN.blit(cursorSurface, (0, 0))
+                    pygame.display.update()
 
     def getDisplay(self):
         return self.SCREEN

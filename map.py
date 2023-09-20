@@ -35,17 +35,46 @@ class Map:
 
         seed = 544786120398304714620491
         random.seed(seed)
+        # random.seed(time.time())
 
         # self.SCREEN = pygame.display.set_mode((self.width*self.adjustFactor, self.height*self.adjustFactor+self.adjustFactor*8))
 
         self.terrainTypes = {
+            "Ocean": {
+                "RegionSelChance": 0,
+                "NodeSelChance": 0,
+                "Diffusion": 0,
+                "Color": (0, 0, 60),
+                "PTQ": (-1, -1),
+                "HPTQ": (-1, -1),
+                "Wet": "Ice",
+                "Dry": "Plains",
+                "EffectBonus": 0,
+                "WaterScore": 2
+            },
+            "Coastal": {
+                "RegionSelChance": 0,
+                "NodeSelChance": 0,
+                "Diffusion": 0,
+                "Color": (0, 0, 120),
+                "PTQ": (-1, -1),
+                "HPTQ": (-1, -1),
+                "Wet": "Ice",
+                "Dry": "Plains",
+                "EffectBonus": 0,
+                "WaterScore": 1
+            },
             "Ice": {
                 "RegionSelChance": 20,
                 "NodeSelChance": 30,
                 "Diffusion": 0.05,
                 "Color": (255, 255, 255),
                 "PTQ": (0, 25),
-                "HPTQ": (0, 28)
+                "HPTQ": (0, 28),
+                "Wet": "Ocean",
+                "Dry": "Coastal",
+                "EffectBonus": -2,
+                "WaterScore": 0.5
             },
             "Tundra": {
                 "RegionSelChance": 20,
@@ -53,7 +82,11 @@ class Map:
                 "Diffusion": 0.05,
                 "Color": (230, 230, 230),
                 "PTQ": (23, 35),
-                "HPTQ": (15, 55)
+                "HPTQ": (15, 55),
+                "Wet": "Taiga",
+                "Dry": "Tundra",
+                "EffectBonus": -1,
+                "WaterScore": 0
             },
             "Taiga": {
                 "RegionSelChance": 20,
@@ -61,7 +94,11 @@ class Map:
                 "Diffusion": 0.25,
                 "Color": (160, 180, 160),
                 "PTQ": (25, 35),
-                "HPTQ": (17, 59)
+                "HPTQ": (17, 59),
+                "Wet": "Taiga",
+                "Dry": "Tundra",
+                "EffectBonus": 0,
+                "WaterScore": 0.25
             },
             "Forest": {
                 "RegionSelChance": 20,
@@ -69,7 +106,11 @@ class Map:
                 "Diffusion": 0.25,
                 "Color": (0, 60, 0),
                 "PTQ": (44, 63),
-                "HPTQ": (34, 85)
+                "HPTQ": (34, 85),
+                "Wet": "Forest",
+                "Dry": "Grassland",
+                "EffectBonus": 2,
+                "WaterScore": 0
             },
             "Grassland": {
                 "RegionSelChance": 20,
@@ -77,7 +118,11 @@ class Map:
                 "Diffusion": 0.10,
                 "Color": (70, 200, 50),
                 "PTQ": (43, 68),
-                "HPTQ": (33, 86)
+                "HPTQ": (33, 86),
+                "Wet": "Forest",
+                "Dry": "Plains",
+                "EffectBonus": 1,
+                "WaterScore": 0
             },
             "Plains": {
                 "RegionSelChance": 20,
@@ -85,7 +130,11 @@ class Map:
                 "Diffusion": 0.05,
                 "Color": (150, 200, 50),
                 "PTQ": (65, 85),
-                "HPTQ": (55, 90)
+                "HPTQ": (55, 90),
+                "Wet": "Grassland",
+                "Dry": "Desert",
+                "EffectBonus": 0,
+                "WaterScore": 0
             },
             "Desert": {
                 "RegionSelChance": 20,
@@ -93,7 +142,11 @@ class Map:
                 "Diffusion": -0.05,
                 "Color": (220, 190, 50),
                 "PTQ": (80, 100),
-                "HPTQ": (75, 100)
+                "HPTQ": (75, 100),
+                "Wet": "Oasis",
+                "Dry": "Desert",
+                "EffectBonus": 0,
+                "WaterScore": -1
             },
             "Oasis": {
                 "RegionSelChance": 20,
@@ -101,29 +154,45 @@ class Map:
                 "Diffusion": -0.05,
                 "Color": (30, 175, 140),
                 "PTQ": (90, 100),
-                "HPTQ": (80, 100)
+                "HPTQ": (80, 100),
+                "Wet": "Plains",
+                "Dry": "Desert",
+                "EffectBonus": 0,
+                "WaterScore": 0.5
             },
             "Hills": {
                 "RegionSelChance": 20,
-                "NodeSelChance": 10,
+                "NodeSelChance": 5,
                 "Diffusion": -0.10,
                 "Color": (170, 150, 50),
                 "PTQ": (35, 95),
-                "HPTQ": (33, 100)
+                "HPTQ": (33, 100),
+                "Wet": "Hills",
+                "Dry": "Hills",
+                "RangeBonus": 3,
+                "EffectBonus": 5,
+                "SelfBonus": 4,
+                "WaterScore": -1.5
             },
             "Mountains": {
                 "RegionSelChance": 30,
-                "NodeSelChance": 5,
+                "NodeSelChance": 1,
                 "Diffusion": -0.15,
                 "Color": (50, 50, 70),
                 "PTQ": (35, 85),
-                "HPTQ": (30, 95)
+                "HPTQ": (30, 95),
+                "Wet": "Mountains",
+                "Dry": "Mountains",
+                "RangeBonus": 5,
+                "EffectBonus": 8,
+                "SelfBonus": 5,
+                "WaterScore": -3
             }
         }
 
         self.terrainRecord = dict()
         for terrainType in self.terrainTypes:
-            self.terrainRecord[terrainType] = 0
+            self.terrainRecord[terrainType] = []
         self.nodeTerrainData = dict()
 
         startTime = time.time()
@@ -246,6 +315,7 @@ class Map:
             try:
                 designatedTerrain = random.choices(proxyTArr, proxyWeightArr, k=1)[0]
                 self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                self.terrainRecord[designatedTerrain].append(nodeNum)
                 instancedNodes[nodeNum] = True
             except ValueError:
                 print(proxyTArr)
@@ -253,6 +323,143 @@ class Map:
                 print(self.nodeTerrainData.get(nodeNum))
                 print(len(instancedNodes))
                 raise Exception
+
+        print('-Diffusion Complete')
+
+        print('Begining ElevationMap...')
+        elevatedNodes = []
+        '''iceNodes = []
+        tundraNodes = []'''
+
+        for mountainNode in self.terrainRecord.get("Mountains"):
+            elevatedNodes.append(mountainNode)
+        for hillNode in self.terrainRecord.get("Hills"):
+            elevatedNodes.append(hillNode)
+
+        '''for iceNode in self.terrainRecord.get("Ice"):
+            iceNodes.append(iceNode)
+        for tundraNode in self.terrainRecord.get("Tundra"):
+            tundraNodes.append(tundraNode)'''
+
+        for nodeNum in elevatedNodes:
+            nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
+            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+            rangeBonus, effectBonus = self.terrainTypes.get(designatedTerrain).get("RangeBonus"), self.terrainTypes.get(designatedTerrain).get("EffectBonus")
+            selfBonus = self.terrainTypes.get(designatedTerrain).get("SelfBonus")
+            self.elevationGrid[nodeNum] = random.randint(selfBonus - 2, selfBonus + 3) + effectBonus
+            nodeElevation = self.elevationGrid.get(nodeNum)
+            self.nodeTerrainData[nodeNum]["Elevation"] = nodeElevation
+
+            for cY in range(max(nodeY - rangeBonus * 2 - random.randint(0, 1), 0), min(nodeY + rangeBonus * 2 + random.randint(0, 1), self.rows)):
+                for cX in range(max(nodeX - rangeBonus * 2 - random.randint(0, 1), 0), min(nodeX + rangeBonus * 2 + random.randint(0, 1), self.columns)):
+                    diffuseNodeNum = cY * self.columns + cX
+                    if diffuseNodeNum not in elevatedNodes:
+                        distToDiffuseNode = distToGiven(nodeX, nodeY, cX, cY)
+                        if distToDiffuseNode < rangeBonus * 2.9:
+                            diffuseElevation = nodeElevation/pow(distToDiffuseNode, 0.7) - effectBonus/rangeBonus
+                            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                            effectBonus = int(self.terrainTypes.get(designatedTerrain).get("EffectBonus") * 0.5)
+                            diffuseElevation += random.randint(-3 + effectBonus, 1 + effectBonus)
+
+                            if "Elevation" not in self.nodeTerrainData.get(diffuseNodeNum):
+                                self.nodeTerrainData[diffuseNodeNum]["Elevation"] = [diffuseElevation]
+                            else:
+                                self.nodeTerrainData[diffuseNodeNum]["Elevation"].append(diffuseElevation)
+
+        '''for nodeNum in iceNodes:
+            if "Elevation" not in self.nodeTerrainData.get(nodeNum):
+                self.nodeTerrainData[nodeNum]["Elevation"] = random.randint(-4, -2)
+            else:
+                self.nodeTerrainData[nodeNum]["Elevation"] += random.randint(-3, -1)
+
+        for nodeNum in tundraNodes:
+            if "Elevation" not in self.nodeTerrainData.get(nodeNum):
+                self.nodeTerrainData[nodeNum]["Elevation"] = random.randint(-3, -1)
+            else:
+                self.nodeTerrainData[nodeNum]["Elevation"] += random.randint(-2, 0)'''
+
+        for nodeNum in self.nodeTerrainData:
+            if nodeNum not in elevatedNodes:
+                if "Elevation" not in self.nodeTerrainData.get(nodeNum):
+                    designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                    effectBonus = self.terrainTypes.get(designatedTerrain).get("EffectBonus")
+                    if effectBonus is None: effectBonus = 0
+                    self.elevationGrid[nodeNum] = random.randint(-3 + effectBonus, 1 + effectBonus)
+                    self.nodeTerrainData[nodeNum]["Elevation"] = self.elevationGrid.get(nodeNum)
+                else:
+                    nodeElevation = sorted(self.nodeTerrainData.get(nodeNum).get("Elevation"))
+                    if len(nodeElevation) > 1:
+                        self.nodeTerrainData[nodeNum]["Elevation"] = sum(nodeElevation)/len(nodeElevation) + nodeElevation[-1]/(len(nodeElevation)-1)
+                    else:
+                        self.nodeTerrainData[nodeNum]["Elevation"] = nodeElevation[0]
+                    self.elevationGrid[nodeNum] = self.nodeTerrainData.get(nodeNum).get("Elevation")
+        print('-ElevationMap Complete')
+
+        print('Begining Coastal Conversion w/ Elevation')
+        waterNodes = []
+        for nodeNum in self.terrainRecord.get("Oasis"):
+            waterNodes.append(nodeNum)
+
+        for nodeNum in self.nodeTerrainData:
+            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+            nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
+            if nodeElevation < -3:
+                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
+                self.terrainRecord[designatedTerrain].remove(nodeNum)
+                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
+                self.terrainRecord["Ocean"].append(nodeNum)
+                waterNodes.append(nodeNum)
+            elif nodeElevation < 1:
+                self.terrainRecord[designatedTerrain].remove(nodeNum)
+                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Coastal"
+                self.terrainRecord["Coastal"].append(nodeNum)
+                waterNodes.append(nodeNum)
+            elif nodeElevation < 1.5:
+                self.terrainRecord[designatedTerrain].remove(nodeNum)
+                designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                self.terrainRecord[designatedTerrain].append(nodeNum)
+            elif nodeElevation > 10:
+                self.terrainRecord[designatedTerrain].remove(nodeNum)
+                designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Dry")
+                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                self.terrainRecord[designatedTerrain].append(nodeNum)
+
+        print('Begining Coastal Conversion w/ Proximity')
+
+        for nodeNum in self.nodeTerrainData:
+            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+            nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
+            if nodeNum not in waterNodes and nodeElevation < 5:
+                nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
+                breakedOutOfLoop = False
+                waterScore = 0
+                numScoreNodes = 0
+                for cY in range(max(nodeY - 2, 0), min(nodeY + 2, self.rows)):
+                    for cX in range(max(nodeX - 2, 0), min(nodeX + 2, self.columns)):
+                        diffuseNodeNum = cY * self.columns + cX
+                        numScoreNodes += 1
+                        if diffuseNodeNum in waterNodes:
+                            diffuseTerrain = self.nodeTerrainData.get(diffuseNodeNum).get("ChosenTerrain")
+                            waterScore += self.terrainTypes.get(diffuseTerrain).get("WaterScore")
+
+                            if not breakedOutOfLoop:
+                                self.terrainRecord[designatedTerrain].remove(nodeNum)
+                                designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                                self.terrainRecord[designatedTerrain].append(nodeNum)
+                                breakedOutOfLoop = True
+                if waterScore / numScoreNodes > 0.65:
+                    if waterScore > 0.95:
+                        self.terrainRecord[designatedTerrain].remove(nodeNum)
+                        self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
+                        self.terrainRecord["Ocean"].append(nodeNum)
+                    else:
+                        self.terrainRecord[designatedTerrain].remove(nodeNum)
+                        self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Coastal"
+                        self.terrainRecord["Coastal"].append(nodeNum)
+
+        print('-Coastal Conversion Complete')
 
     def generateMapOld1(self):
         for row in range(0, self.rows):
