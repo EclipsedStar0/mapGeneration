@@ -52,24 +52,24 @@ class mapRadialSearchThread(threading.Thread):
                 if diffuseTerrainInfo.get("ChosenTerrain") is not None:
                     self.diffuseTerrain = diffuseTerrainInfo.get("ChosenTerrain")
                     terrainPTQ = self.terrainTypes.get(self.diffuseTerrain).get("PTQ")
-                    terrainHPTQ = self.terrainTypes.get(self.diffuseTerrain).get("HPTQ")
                     lattitudePQT = 100 - abs(1 - 2 * self.cY / self.rows) * 100
 
                     self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
                     if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
-                        self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
                         # Fetch our distance from the center of the range
                         temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 50
                         self.diffuseWeight = max(self.diffuseWeight - pow(temp, 1.1), 1)
-                    elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
-                        self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
-                        # Fetch our distance from the center of the range
-                        temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
-                        self.diffuseWeight = max(self.diffuseWeight - pow(temp, 2.5), 1)
                     else:
-                        self.diffuseWeight *= 0.25
-
-                    self.diffuseWeight = self.diffuseWeight / pow(distToDiffuseNode, 0.7)
+                        terrainHPTQ = self.terrainTypes.get(self.diffuseTerrain).get("HPTQ")
+                        if terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
+                            # Fetch our distance from the center of the range
+                            temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
+                            self.diffuseWeight = max(self.diffuseWeight - pow(temp, 2.5), 1)
+                        else:
+                            temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
+                            self.diffuseWeight = 0.25 * max(self.diffuseWeight - pow(temp, 3.25), 1)
+                            # diffuseWeight *= 0.25
+                    self.diffuseWeight = self.diffuseWeight / pow(distToDiffuseNode - 0.75, 0.7)
                 else:
                     self.mode = False
             else:

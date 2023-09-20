@@ -1,6 +1,4 @@
-import math
 import random
-import sys
 import time
 import pygame
 
@@ -14,11 +12,13 @@ class Map:
         self.height = 576
 
         # You can change the adjustFactor to easily scale the map, so a factor of 2, would make it 4 times smaller, 4 would make it 16 times smaller, 8 would make it 64 times smaller, etc.
-        self.adjustFactor = 16
+        self.adjustFactor = 4
 
         # For optimal generation, keep radial search between 0 and 5, increase slightly if you drop adjust factor
-        self.radialSearch = int(32/self.adjustFactor)
+        # self.radialSearch = int(32/self.adjustFactor)
+        self.radialSearch = 4
 
+        # NOTE: Currently multithreading is VERY Ineffective, taking around ~44 times longer with blocky terrain following the lattitude bands
         self.multiThreading = False
 
         self.columns, self.rows = 1024 // self.adjustFactor, 576 // self.adjustFactor
@@ -127,9 +127,6 @@ class Map:
         self.generateMap()
         print(f'We finished map generation-- this took {time.time()-startTime} seconds')
 
-        self.SCREEN = pygame.display.set_mode((self.width, self.height))
-        self.generateDisplay()
-
     def generateMap(self):
 
         def distToSplit(nodeNum1, nodeNum2):
@@ -142,6 +139,7 @@ class Map:
 
         instancedNodes = dict()
 
+        print('Assigning Base Weights...')
         for row in range(0, self.rows):
 
             # Get base weights based off of lattitude
@@ -175,6 +173,7 @@ class Map:
 
         maxNodes = self.columns * self.rows
 
+        print('Begining Diffusion...')
         while len(instancedNodes) < maxNodes:
             nodeNum = random.randint(0, maxNodes-1)
             while nodeNum in instancedNodes:
@@ -206,25 +205,25 @@ class Map:
 
                                 diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
                                 if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
-                                    diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
                                     # Fetch our distance from the center of the range
                                     temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 50
                                     diffuseWeight = max(diffuseWeight - pow(temp, 1.1), 1)
                                 elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
-                                    diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
                                     # Fetch our distance from the center of the range
                                     temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
                                     diffuseWeight = max(diffuseWeight - pow(temp, 2.5), 1)
                                 else:
-                                    diffuseWeight *= 0.25
-
-                                diffuseWeight = diffuseWeight / pow(distToDiffuseNode, 0.7)
+                                    temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
+                                    diffuseWeight = 0.25 * max(diffuseWeight - pow(temp, 3.25), 1)
+                                    # diffuseWeight *= 0.25
+                                diffuseWeight = diffuseWeight / pow(distToDiffuseNode-0.75, 0.7)
 
                                 if diffuseTerrain not in self.nodeTerrainData.get(nodeNum).get("Weights"):
                                     self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = diffuseWeight
                                 else:
                                     self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = pow(pow(diffuseWeight, 2) + pow(self.nodeTerrainData.get(nodeNum).get("Weights").get(diffuseTerrain), 2), 0.5)
 
+            # Currently, multithreading is slower than doing it manually, this may be due to unoptimized code
             if self.multiThreading:
                 for thread in diffuseThreads:
                     thread.join()
@@ -357,31 +356,11 @@ class Map:
 
         self.nodeTerrainData = nodeTerrainData
 
-    def generateDisplay(self):
-        pass
-        ''' Draw the display '''
+    def getAdjustFactor(self):
+        return self.adjustFactor
 
-        def drawTheInterface():
-            self.SCREEN.fill((20, 10, 30))
-            for row in range(0, self.rows):
-                for column in range(0, self.columns):
-                    nodeNum = row * self.columns + column
-                    color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
-                    pygame.draw.rect(self.SCREEN, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
+    def getTerrainTypes(self):
+        return self.terrainTypes
 
-        drawTheInterface()
-        pygame.display.update()
-
-        '''User Interactions'''
-
-        success = False
-        while not success:
-            for userEvent in pygame.event.get():
-                pos = pygame.mouse.get_pos()
-                playerRect = pygame.Rect(pos[0] - 1, pos[1] - 1, 2, 2)
-
-                if userEvent.type == pygame.QUIT:
-                    sys.exit()
-
-    def fetchTerrainData(self):
+    def getTerrainData(self):
         return self.nodeTerrainData
