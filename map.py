@@ -1,5 +1,7 @@
 import random
 import time
+from copy import deepcopy
+
 import pygame
 
 import customThread
@@ -196,6 +198,9 @@ class Map:
         for terrainType in self.terrainTypes:
             self.terrainRecord[terrainType] = []
         self.nodeTerrainData = dict()
+
+        self.continentData = dict()
+        self.regionData = dict()
 
         startTime = time.time()
         print('Begining generation...')
@@ -437,7 +442,7 @@ class Map:
             # if designatedTerrain not in self.terrainTypesWAT and nodeElevation < 5:
             if nodeNum not in waterNodes and nodeElevation < 5:
                 nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
-                breakedOutOfLoop = False
+                # breakedOutOfLoop = False
                 waterScore = 0
                 numScoreNodes = 0
                 for cY in range(max(nodeY - 2, 0), min(nodeY + 2, self.rows)):
@@ -450,12 +455,12 @@ class Map:
                             diffuseTerrain = self.nodeTerrainData.get(diffuseNodeNum).get("ChosenTerrain")
                             waterScore += self.terrainTypes.get(diffuseTerrain).get("WaterScore")
 
-                            if not breakedOutOfLoop:
+                            '''if not breakedOutOfLoop:
                                 self.terrainRecord[designatedTerrain].remove(nodeNum)
                                 designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
                                 self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                                 self.terrainRecord[designatedTerrain].append(nodeNum)
-                                breakedOutOfLoop = True
+                                breakedOutOfLoop = True'''
                 if waterScore / numScoreNodes > 0.55:
                     if waterScore > 0.95:
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
@@ -471,16 +476,25 @@ class Map:
                         nodeElevation = nodeElevation - self.terrainTypes.get("Ocean").get("WaterScore") * 2
                         self.nodeTerrainData[nodeNum]["Elevation"] = nodeElevation
                         self.elevationGrid[nodeNum] = nodeElevation
+                elif waterScore / numScoreNodes > 0.25:
+                    self.terrainRecord[designatedTerrain].remove(nodeNum)
+                    designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                    if waterScore / numScoreNodes > 0.40:
+                        designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                    self.terrainRecord[designatedTerrain].append(nodeNum)
 
         print('-Coastal Conversion Complete')
 
-        print('Begining Continent Organization')
+        print('Begining Continent Organization...')
 
         elevationBasePoints = dict()
+        elevatedAssociation = dict()
         for terrainType in self.terrainTypesELE:
             if terrainType in self.terrainRecord:
                 for nodeNum in self.terrainRecord.get(terrainType):
-                    elevationBasePoints[nodeNum] = []
+                    elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
+                    elevatedAssociation[nodeNum] = [nodeNum]
 
         for nodeNum in self.nodeTerrainData:
             if nodeNum not in elevationBasePoints:
@@ -490,41 +504,152 @@ class Map:
                     if dist < minDist:
                         minDist = dist
                         minNode = basePoint
-                        if minDist < 3:
+                        if minDist <= 1:
                             break
-                elevationBasePoints[minNode].append(nodeNum)
+                elevationBasePoints[minNode]["Nodes"].append(nodeNum)
+                elevatedAssociation[minNode].append(nodeNum)
 
+        # Generate Continents
         runAgain = True
+        runningTime = 0
         while runAgain:
+            print(f'Continent Organization #{runningTime}')
+            runningTime += 1
             runAgain = False
-            markedForChange = []
+            markedForChange = dict()
+            markedSubCat = dict()
             for basePoint in elevationBasePoints:
-                if basePoint not in markedForChange:
+                if basePoint not in markedSubCat:
                     for basePoint2 in elevationBasePoints:
-                        if basePoint != basePoint2 and basePoint2 not in markedForChange:
+                        if basePoint != basePoint2:
                             dist = distToSplit(basePoint, basePoint2)
-                            designatedTerrain = self.nodeTerrainData.get(basePoint).get("ChosenTerrain")
-                            if dist <= self.terrainTypes.get(designatedTerrain).get("RangeBonus"):
-                                markedForChange.append((basePoint, basePoint2))
+                            for otherElevatedNode in elevationBasePoints.get(basePoint).get("Elevated"):
+                                if otherElevatedNode != basePoint:
+                                    dist = min(distToSplit(otherElevatedNode, basePoint2), dist)
+                            # 16, 18, 19, 24
+                            if dist <= 18:
+                                proceed = False
+                                if basePoint2 in markedSubCat:
+                                    baseData = markedSubCat.get(basePoint2)
+                                    if dist < baseData[1]:
+                                        markedSubCat[basePoint2] = (basePoint, dist)
+                                        markedForChange[baseData[0]].remove((baseData[0], basePoint2))
+                                        if len(markedForChange.get(baseData[0])) < 1:
+                                            del markedForChange[baseData[0]]
+                                        proceed = True
+                                else: proceed = True
+                                if proceed:
+                                    if markedForChange.get(basePoint) is None:
+                                        markedForChange[basePoint] = []
+                                    markedForChange[basePoint].append((basePoint, basePoint2))
+                                    markedSubCat[basePoint2] = (basePoint, dist)
 
             if len(markedForChange) > 0:
-                for baseNode1, baseNode2 in markedForChange:
-                    newArr, elligible = [], []
-                    if elevationBasePoints.get(baseNode1) is not None:
-                        elligible.append(baseNode1)
-                        for nodeNum in elevationBasePoints.get(baseNode1):
-                            newArr.append(nodeNum)
-                    if elevationBasePoints.get(baseNode2) is not None:
-                        elligible.append(baseNode2)
-                        for nodeNum in elevationBasePoints.get(baseNode2):
-                            newArr.append(nodeNum)
-                    if len(elligible) > 1:
-                        del elevationBasePoints[baseNode2]
-                        elevationBasePoints[baseNode1] = newArr
-                    else: pass
+                for baseNode in markedForChange:
+                    for baseNode1, baseNode2 in markedForChange.get(baseNode):
+                        newArrN, newArrE, elligible = [], [], []
+                        if elevationBasePoints.get(baseNode1) is not None:
+                            elligible.append(baseNode1)
+                            newArrN = elevationBasePoints.get(baseNode1).get("Nodes")
+                            newArrE = elevationBasePoints.get(baseNode1).get("Elevated")
+                        if elevationBasePoints.get(baseNode2) is not None:
+                            elligible.append(baseNode2)
+                            newArrN += elevationBasePoints.get(baseNode2).get("Nodes")
+                            newArrE += elevationBasePoints.get(baseNode2).get("Elevated")
+                        if len(elligible) > 1:
+                            del elevationBasePoints[baseNode2]
+                            elevationBasePoints[baseNode1]["Nodes"] = newArrN
+                            elevationBasePoints[baseNode1]["Elevated"] = newArrE
+                        else: pass
                 runAgain = True
 
+        colorCombos = []
+        for continent in elevationBasePoints:
+            redC, greenC, blueC = random.randint(0, 5)*51, random.randint(0, 5)*51, random.randint(0, 5)*51
+            while (redC, greenC, blueC) in colorCombos:
+                redC, greenC, blueC = random.randint(0, 5)*51, random.randint(0, 5)*51, random.randint(0, 5)*51
+            colorCombos.append((redC, greenC, blueC))
+
+            elevationBasePoints[continent]["Color"] = (redC, greenC, blueC)
+            elevationBasePoints[continent]["Name"] = "Placeholder"
+            for nodeNum in elevationBasePoints.get(continent).get("Nodes"):
+                self.nodeTerrainData[nodeNum]["Continent"] = continent
+        self.continentData = deepcopy(elevationBasePoints)
+
         print('-Continent Organization Complete')
+
+        print('Begining Region Organization...')
+        generateRegions = True
+        if generateRegions:
+            for terrainType in self.terrainTypesELE:
+                if terrainType in self.terrainRecord:
+                    for nodeNum in self.terrainRecord.get(terrainType):
+                        elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
+
+            # Now we run the while loop again, but with a distance of 16;
+            # NOTE: This code is the exact same as above with only the distance modified
+            totalRunningTime = 0
+            continentRun = 0
+            regionDataSave = dict()
+            for continent in self.continentData:
+                print(f'-Working on Continent #{continentRun}')
+                continentRun += 1
+                runAgain = True
+                elevatedNodesToUse = self.continentData.get(continent).get("Elevated")
+                elevatedNodesLeft = list(range(0, len(elevatedNodesToUse) - 1))
+                regionDataSave[continent] = dict()
+                regionRun = 0
+                while runAgain:
+                    runAgain = False
+                    print(f'--Run #{regionRun}')
+                    regionRun += 1
+                    while elevatedNodesLeft:
+                        randIndex = elevatedNodesLeft[random.randint(0, len(elevatedNodesLeft)-1)]
+                        randNode = elevatedNodesToUse[randIndex]
+                        elevatedNodesLeft.remove(randIndex)
+                        markedForChange = []
+                        for regionElevatedNode in elevatedNodesToUse:
+                            if regionElevatedNode != randNode:
+                                dist = distToSplit(randNode, regionElevatedNode)
+                                if dist <= 18:
+                                    markedForChange.append(regionElevatedNode)
+                                else:
+                                    if randNode in regionDataSave.get(continent):
+                                        for entry in regionDataSave.get(continent).get(randNode):
+                                            dist = distToSplit(entry, regionElevatedNode)
+                                            if dist <= 18:
+                                                markedForChange.append(regionElevatedNode)
+                                                break
+                        if len(markedForChange) > 0:
+                            runAgain = True
+                            if randNode not in regionDataSave.get(continent):
+                                regionDataSave[continent][randNode] = [randNode]
+                            for entry in markedForChange:
+                                regionDataSave[continent][randNode].append(entry)
+                                if entry in regionDataSave.get(continent):
+                                    regionDataSave[continent][randNode] += regionDataSave.get(continent).get(entry)
+                                    del regionDataSave[continent][entry]
+
+                print(f'--Finished Continent #{continentRun}')
+
+            regionDataSaveNew = dict()
+            for continent in regionDataSave:
+                baseColor = self.continentData.get(continent).get("Color")
+                for region in regionDataSave.get(continent):
+                    redC, greenC, blueC = max(min(random.randint(-3, 3) * 15 + baseColor[0], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[1], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[2], 255), 0)
+                    while (redC, greenC, blueC) in colorCombos:
+                        redC, greenC, blueC = max(min(random.randint(-3, 3) * 15 + baseColor[0], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[1], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[2], 255), 0)
+                    colorCombos.append((redC, greenC, blueC))
+                    regionDataSaveNew[region] = dict()
+                    regionDataSaveNew[region]["Color"] = (redC, greenC, blueC)
+                    regionDataSaveNew[region]["Name"] = "Placeholder"
+                    regionDataSaveNew[region]["Elevated"] = regionDataSave.get(continent).get(region)
+                    for elevatedNode in regionDataSave.get(continent).get(region):
+                        for nodeNum in elevatedAssociation.get(elevatedNode):
+                            self.nodeTerrainData[nodeNum]["Region"] = region
+            self.regionData = regionDataSaveNew
+
+        print('-Region Organization Complete')
 
     def generateMapOld1(self):
         for row in range(0, self.rows):
@@ -640,3 +765,9 @@ class Map:
 
     def getTerrainData(self):
         return self.nodeTerrainData
+
+    def getContinentData(self):
+        return self.continentData
+
+    def getRegionData(self):
+        return self.regionData

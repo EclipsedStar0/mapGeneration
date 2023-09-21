@@ -7,6 +7,8 @@ class Display:
         self.gameObj = gameInstance
         self.worldGen = self.gameObj.getWorldGen()
         self.adjustFactor = self.worldGen.getAdjustFactor()
+        self.continentData = self.worldGen.getContinentData()
+        self.regionData = self.worldGen.getRegionData()
         self.nodeTerrainData = self.worldGen.getTerrainData()
         self.terrainTypes = self.worldGen.getTerrainTypes()
         self.width, self.height = 1024, 576
@@ -92,6 +94,28 @@ class Display:
                             color = (120, 30, 0)
                         else:
                             color = (180, 20, 0)
+                    elif mode == "Continent":
+                        continent = self.nodeTerrainData.get(nodeNum).get("Continent")
+                        color = (0, 0, 80)
+                        if continent is None:
+                            color = (0, 0, 0)
+                        else:
+                            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                            if designatedTerrain != "Ocean" and designatedTerrain != "Coastal":
+                                color = self.continentData.get(continent).get("Color")
+                                if nodeNum in self.continentData.get(continent).get("Elevated"):
+                                    color = glow(color)
+                    elif mode == "Region":
+                        region = self.nodeTerrainData.get(nodeNum).get("Region")
+                        color = (0, 0, 80)
+                        if region is None:
+                            color = (0, 0, 0)
+                        else:
+                            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                            if designatedTerrain != "Ocean" and designatedTerrain != "Coastal":
+                                color = self.regionData.get(region).get("Color")
+                                if nodeNum in self.regionData.get(region).get("Elevated"):
+                                    color = glow(color)
                     pygame.draw.rect(screenSurface, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
 
             # Draw bottom row buttons
@@ -99,17 +123,21 @@ class Display:
             terrainC = (70, 170, 70)
             elevationC = (170, 70, 70)
             continentC = (70, 70, 170)
+            regionC = (120, 120, 190)
 
             if mode == "Terrain": terrainC = greyOut(terrainC)
             elif mode == "Elevation": elevationC = greyOut(elevationC)
             elif mode == "Continent": continentC = greyOut(continentC)
+            elif mode == "Region": continentC = greyOut(regionC)
             terrainBTN = pygame.draw.rect(screenSurface, terrainC, (self.width * 0.05, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             continentBTN = pygame.draw.rect(screenSurface, continentC, (self.width * 0.19, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            regionBTN = pygame.draw.rect(screenSurface, regionC, (self.width * 0.26, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             self.guiDisplayData["Buttons"] = {
                 "Terrain": terrainBTN,
                 "Elevation": elevationBTN,
-                "Continent": continentBTN
+                "Continent": continentBTN,
+                "Region": regionBTN
             }
 
             return screenSurface
