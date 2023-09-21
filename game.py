@@ -21,6 +21,13 @@ class Game:
     def runTimeStep(self):
         self.display.generateDisplay()
 
+        ''' Ideas for usage of Game Map'''
+        '''
+        
+        
+        
+        '''
+
     def runGame(self):
         while not self.gameOver:
             self.runTimeStep()

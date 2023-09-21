@@ -30,9 +30,18 @@ class Display:
 
         def glow(rgbTuple):
             redC, greenC, blueC = rgbTuple
-            redC = int(max(min(redC - 5, 255), 0))
-            greenC = int(max(min(greenC + 7, 255), 0))
-            blueC = int(max(min(blueC + 15, 255), 0))
+            if redC > greenC:
+                if redC > blueC:
+                    redC = int(max(min(redC + 85, 255), 0))
+                else:
+                    blueC = int(max(min(blueC + 85, 255), 0))
+            elif greenC > blueC:
+                greenC = int(max(min(greenC + 85, 255), 0))
+            else:
+                blueC = int(max(min(blueC + 85, 255), 0))
+            redC = int(max(min(redC - 35, 255), 0))
+            greenC = int(max(min(greenC - 35, 255), 0))
+            blueC = int(max(min(blueC - 35, 255), 0))
             return redC, greenC, blueC
 
         def greyOut(rgbTuple):
@@ -89,14 +98,18 @@ class Display:
             startHeight = self.height - self.addedHeight
             terrainC = (70, 170, 70)
             elevationC = (170, 70, 70)
+            continentC = (70, 70, 170)
 
             if mode == "Terrain": terrainC = greyOut(terrainC)
             elif mode == "Elevation": elevationC = greyOut(elevationC)
+            elif mode == "Continent": continentC = greyOut(continentC)
             terrainBTN = pygame.draw.rect(screenSurface, terrainC, (self.width * 0.05, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            continentBTN = pygame.draw.rect(screenSurface, continentC, (self.width * 0.19, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             self.guiDisplayData["Buttons"] = {
                 "Terrain": terrainBTN,
-                "Elevation": elevationBTN
+                "Elevation": elevationBTN,
+                "Continent": continentBTN
             }
 
             return screenSurface

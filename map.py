@@ -189,6 +189,8 @@ class Map:
                 "WaterScore": -3
             }
         }
+        self.terrainTypesELE = ["Mountains", "Hills"]
+        self.terrainTypesWAT = ["Ocean, Coastal, Oasis"]
 
         self.terrainRecord = dict()
         for terrainType in self.terrainTypes:
@@ -331,10 +333,10 @@ class Map:
         '''iceNodes = []
         tundraNodes = []'''
 
-        for mountainNode in self.terrainRecord.get("Mountains"):
-            elevatedNodes.append(mountainNode)
-        for hillNode in self.terrainRecord.get("Hills"):
-            elevatedNodes.append(hillNode)
+        for terrainType in self.terrainTypesELE:
+            if terrainType in self.terrainRecord:
+                for nodeNum in self.terrainRecord.get(terrainType):
+                    elevatedNodes.append(nodeNum)
 
         '''for iceNode in self.terrainRecord.get("Ice"):
             iceNodes.append(iceNode)
@@ -397,8 +399,10 @@ class Map:
 
         print('Begining Coastal Conversion w/ Elevation')
         waterNodes = []
-        for nodeNum in self.terrainRecord.get("Oasis"):
-            waterNodes.append(nodeNum)
+        for terrainType in self.terrainTypesWAT:
+            if terrainType in self.terrainRecord:
+                for nodeNum in self.terrainRecord.get(terrainType):
+                    waterNodes.append(nodeNum)
 
         for nodeNum in self.nodeTerrainData:
             designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
@@ -430,6 +434,7 @@ class Map:
         for nodeNum in self.nodeTerrainData:
             designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
             nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
+            # if designatedTerrain not in self.terrainTypesWAT and nodeElevation < 5:
             if nodeNum not in waterNodes and nodeElevation < 5:
                 nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
                 breakedOutOfLoop = False
@@ -438,7 +443,9 @@ class Map:
                 for cY in range(max(nodeY - 2, 0), min(nodeY + 2, self.rows)):
                     for cX in range(max(nodeX - 2, 0), min(nodeX + 2, self.columns)):
                         diffuseNodeNum = cY * self.columns + cX
+                        # diffuseTerrain = self.nodeTerrainData.get(diffuseNodeNum).get("ChosenTerrain")
                         numScoreNodes += 1
+                        # if diffuseTerrain in self.terrainTypesWAT:
                         if diffuseNodeNum in waterNodes:
                             diffuseTerrain = self.nodeTerrainData.get(diffuseNodeNum).get("ChosenTerrain")
                             waterScore += self.terrainTypes.get(diffuseTerrain).get("WaterScore")
@@ -449,17 +456,75 @@ class Map:
                                 self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                                 self.terrainRecord[designatedTerrain].append(nodeNum)
                                 breakedOutOfLoop = True
-                if waterScore / numScoreNodes > 0.65:
+                if waterScore / numScoreNodes > 0.55:
                     if waterScore > 0.95:
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
                         self.terrainRecord["Ocean"].append(nodeNum)
+                        nodeElevation = nodeElevation - self.terrainTypes.get("Ocean").get("WaterScore") * 2
+                        self.nodeTerrainData[nodeNum]["Elevation"] = nodeElevation
+                        self.elevationGrid[nodeNum] = nodeElevation
                     else:
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Coastal"
                         self.terrainRecord["Coastal"].append(nodeNum)
+                        nodeElevation = nodeElevation - self.terrainTypes.get("Ocean").get("WaterScore") * 2
+                        self.nodeTerrainData[nodeNum]["Elevation"] = nodeElevation
+                        self.elevationGrid[nodeNum] = nodeElevation
 
         print('-Coastal Conversion Complete')
+
+        print('Begining Continent Organization')
+
+        elevationBasePoints = dict()
+        for terrainType in self.terrainTypesELE:
+            if terrainType in self.terrainRecord:
+                for nodeNum in self.terrainRecord.get(terrainType):
+                    elevationBasePoints[nodeNum] = []
+
+        for nodeNum in self.nodeTerrainData:
+            if nodeNum not in elevationBasePoints:
+                minDist, minNode = float('inf'), float('inf')
+                for basePoint in elevationBasePoints:
+                    dist = distToSplit(nodeNum, basePoint)
+                    if dist < minDist:
+                        minDist = dist
+                        minNode = basePoint
+                        if minDist < 3:
+                            break
+                elevationBasePoints[minNode].append(nodeNum)
+
+        runAgain = True
+        while runAgain:
+            runAgain = False
+            markedForChange = []
+            for basePoint in elevationBasePoints:
+                if basePoint not in markedForChange:
+                    for basePoint2 in elevationBasePoints:
+                        if basePoint != basePoint2 and basePoint2 not in markedForChange:
+                            dist = distToSplit(basePoint, basePoint2)
+                            designatedTerrain = self.nodeTerrainData.get(basePoint).get("ChosenTerrain")
+                            if dist <= self.terrainTypes.get(designatedTerrain).get("RangeBonus"):
+                                markedForChange.append((basePoint, basePoint2))
+
+            if len(markedForChange) > 0:
+                for baseNode1, baseNode2 in markedForChange:
+                    newArr, elligible = [], []
+                    if elevationBasePoints.get(baseNode1) is not None:
+                        elligible.append(baseNode1)
+                        for nodeNum in elevationBasePoints.get(baseNode1):
+                            newArr.append(nodeNum)
+                    if elevationBasePoints.get(baseNode2) is not None:
+                        elligible.append(baseNode2)
+                        for nodeNum in elevationBasePoints.get(baseNode2):
+                            newArr.append(nodeNum)
+                    if len(elligible) > 1:
+                        del elevationBasePoints[baseNode2]
+                        elevationBasePoints[baseNode1] = newArr
+                    else: pass
+                runAgain = True
+
+        print('-Continent Organization Complete')
 
     def generateMapOld1(self):
         for row in range(0, self.rows):
