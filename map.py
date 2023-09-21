@@ -24,8 +24,8 @@ class Map:
         # Be Advised: Adjust 1, Radial 32 has a time exceeding known limits (+30 minutes)
         # A1, R4 has a time of 58.19 seconds
 
-        # NOTE: Currently multithreading is VERY Ineffective, taking around ~44 times longer with blocky terrain following the lattitude bands
-        self.multiThreading = False
+        # Note-- certain mulithreading operations very ineffective, whilst others are, so those ineffective ones are being disabled
+        self.multiThreading = True
 
         self.columns, self.rows = 1024 // self.adjustFactor, 576 // self.adjustFactor
         # self.columns, self.rows = 256, 144
@@ -73,7 +73,7 @@ class Map:
                 "Color": (255, 255, 255),
                 "PTQ": (0, 25),
                 "HPTQ": (0, 28),
-                "Wet": "Ocean",
+                "Wet": "Coastal",
                 "Dry": "Coastal",
                 "EffectBonus": -2,
                 "WaterScore": 0.5
@@ -269,7 +269,8 @@ class Map:
                 for cX in range(max(nodeX - self.radialSearch, 0), min(nodeX + self.radialSearch, self.columns)):
                     diffuseNodeNum = cY * self.columns + cX
                     if diffuseNodeNum in instancedNodes and diffuseNodeNum != nodeNum:
-                        if self.multiThreading:
+                        # This thread is very ineffective
+                        if self.multiThreading and False:
                             newThread = customThread.mapRadialSearchThread(nodeX, nodeY, cX, cY, self.rows, self.columns, self.radialSearch, self.terrainTypes, self.nodeTerrainData)
                             newThread.start()
                             diffuseThreads.append(newThread)
@@ -304,7 +305,7 @@ class Map:
                                     self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = pow(pow(diffuseWeight, 2) + pow(self.nodeTerrainData.get(nodeNum).get("Weights").get(diffuseTerrain), 2), 0.5)
 
             # Currently, multithreading is slower than doing it manually, this may be due to unoptimized code
-            if self.multiThreading:
+            if self.multiThreading and False:
                 for thread in diffuseThreads:
                     thread.join()
                     diffuseWeight, diffuseTerrain, mode = thread.getVal()
@@ -409,30 +410,48 @@ class Map:
                 for nodeNum in self.terrainRecord.get(terrainType):
                     waterNodes.append(nodeNum)
 
-        for nodeNum in self.nodeTerrainData:
-            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
-            nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
-            if nodeElevation < -3:
-                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
-                self.terrainRecord[designatedTerrain].remove(nodeNum)
-                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
-                self.terrainRecord["Ocean"].append(nodeNum)
-                waterNodes.append(nodeNum)
-            elif nodeElevation < 1:
-                self.terrainRecord[designatedTerrain].remove(nodeNum)
-                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Coastal"
-                self.terrainRecord["Coastal"].append(nodeNum)
-                waterNodes.append(nodeNum)
-            elif nodeElevation < 1.5:
-                self.terrainRecord[designatedTerrain].remove(nodeNum)
-                designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
-                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
-                self.terrainRecord[designatedTerrain].append(nodeNum)
-            elif nodeElevation > 10:
-                self.terrainRecord[designatedTerrain].remove(nodeNum)
-                designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Dry")
-                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
-                self.terrainRecord[designatedTerrain].append(nodeNum)
+        '''Currently, default approach is faster than multithreading'''
+        # This approach also seems to create slight deviations from the default approach
+        if self.multiThreading and False:
+            runningThreads = []
+            for nodeNum in self.nodeTerrainData:
+                newThread = customThread.mapCoastalConverEle(nodeNum, self.nodeTerrainData, self.terrainTypes, self.terrainRecord)
+                newThread.start()
+                runningThreads.append(newThread)
+            for newThread in runningThreads:
+                newThread.join()
+                values = newThread.getVal()
+                if values[0] != values[1]:
+                    self.terrainRecord[values[1]].remove(values[2])
+                    self.nodeTerrainData[values[2]]["ChosenTerrain"] = values[0]
+                    self.terrainRecord[values[0]].append(values[2])
+                    if values[0] == "Ocean" or values[0] == "Coastal":
+                        waterNodes.append(values[2])
+        else:
+            for nodeNum in self.nodeTerrainData:
+                designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
+                if nodeElevation < -3:
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
+                    self.terrainRecord[designatedTerrain].remove(nodeNum)
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
+                    self.terrainRecord["Ocean"].append(nodeNum)
+                    waterNodes.append(nodeNum)
+                elif nodeElevation < 2:
+                    self.terrainRecord[designatedTerrain].remove(nodeNum)
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Coastal"
+                    self.terrainRecord["Coastal"].append(nodeNum)
+                    waterNodes.append(nodeNum)
+                elif nodeElevation < 4:
+                    self.terrainRecord[designatedTerrain].remove(nodeNum)
+                    designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                    self.terrainRecord[designatedTerrain].append(nodeNum)
+                elif nodeElevation > 10:
+                    self.terrainRecord[designatedTerrain].remove(nodeNum)
+                    designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Dry")
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                    self.terrainRecord[designatedTerrain].append(nodeNum)
 
         print('Begining Coastal Conversion w/ Proximity')
 
@@ -488,6 +507,8 @@ class Map:
 
         print('Begining Continent Organization...')
 
+        # Note, this section down to the begining of the while loop is where all the slowdown is
+
         elevationBasePoints = dict()
         elevatedAssociation = dict()
         for terrainType in self.terrainTypesELE:
@@ -496,18 +517,30 @@ class Map:
                     elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
                     elevatedAssociation[nodeNum] = [nodeNum]
 
-        for nodeNum in self.nodeTerrainData:
-            if nodeNum not in elevationBasePoints:
-                minDist, minNode = float('inf'), float('inf')
-                for basePoint in elevationBasePoints:
-                    dist = distToSplit(nodeNum, basePoint)
-                    if dist < minDist:
-                        minDist = dist
-                        minNode = basePoint
-                        if minDist <= 1:
-                            break
-                elevationBasePoints[minNode]["Nodes"].append(nodeNum)
-                elevatedAssociation[minNode].append(nodeNum)
+        if not self.multiThreading:
+            for nodeNum in self.nodeTerrainData:
+                if nodeNum not in elevationBasePoints:
+                    minDist, minNode = float('inf'), float('inf')
+                    for basePoint in elevationBasePoints:
+                        dist = distToSplit(nodeNum, basePoint)
+                        if dist < minDist:
+                            minDist = dist
+                            minNode = basePoint
+                            if minDist <= 1:
+                                break
+                    elevationBasePoints[minNode]["Nodes"].append(nodeNum)
+                    elevatedAssociation[minNode].append(nodeNum)
+        else:
+            runningThreads = []
+            for nodeNum in self.nodeTerrainData:
+                newThread = customThread.mapAssociatedElevThread(nodeNum, self.nodeTerrainData, elevationBasePoints, self.columns, self.rows)
+                newThread.start()
+                runningThreads.append(newThread)
+            for newThread in runningThreads:
+                newThread.join()
+                values = newThread.getVal()
+                elevationBasePoints[values[1]]["Nodes"].append(values[0])
+                elevatedAssociation[values[1]].append(values[0])
 
         # Generate Continents
         runAgain = True
