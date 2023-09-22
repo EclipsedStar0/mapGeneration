@@ -1,3 +1,5 @@
+import time
+
 import pygame
 
 
@@ -124,20 +126,27 @@ class Display:
             elevationC = (170, 70, 70)
             continentC = (70, 70, 170)
             regionC = (120, 120, 190)
+            advanceC = (190, 40, 190)
 
             if mode == "Terrain": terrainC = greyOut(terrainC)
             elif mode == "Elevation": elevationC = greyOut(elevationC)
             elif mode == "Continent": continentC = greyOut(continentC)
-            elif mode == "Region": continentC = greyOut(regionC)
+            elif mode == "Region": regionC = greyOut(regionC)
+
+            if self.worldGen.fetchStageModifier() > 4:
+                advanceC = greyOut(advanceC)
+
             terrainBTN = pygame.draw.rect(screenSurface, terrainC, (self.width * 0.05, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             continentBTN = pygame.draw.rect(screenSurface, continentC, (self.width * 0.19, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             regionBTN = pygame.draw.rect(screenSurface, regionC, (self.width * 0.26, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            advanceBTN = pygame.draw.rect(screenSurface, advanceC, (self.width * 0.33, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             self.guiDisplayData["Buttons"] = {
                 "Terrain": terrainBTN,
                 "Elevation": elevationBTN,
                 "Continent": continentBTN,
-                "Region": regionBTN
+                "Region": regionBTN,
+                "Advance Mode": advanceBTN
             }
 
             return screenSurface
@@ -173,29 +182,67 @@ class Display:
                 elif userEvent.type == pygame.MOUSEBUTTONDOWN:
                     if pygame.mouse.get_pressed()[0]:
                         # We are left-clicking
+                        # noinspection PyTypeChecker
                         btnCollision = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
                         if btnCollision:
+                            # noinspection PyUnresolvedReferences
                             buttonName = btnCollision[0]
                             buttonCollidedWith = btnCollision[1]
                             if self.guiDisplayData.get("Mode") != buttonName:
-                                self.guiDisplayData["Mode"] = buttonName
-                                returnedScreenSurface = drawTheInterface()
-                                self.SCREEN.blit(returnedScreenSurface, (0, 0))
-                                cursorSurface.fill((0, 0, 0, 0))
-                                cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
-                                self.SCREEN.blit(cursorSurface, (0, 0))
-                                pygame.display.update()
+                                modifier = self.worldGen.fetchStageModifier()
+                                valid = False
+                                if buttonName == "Terrain": valid = True
+                                elif buttonName == "Elevation" and modifier > 0: valid = True
+                                elif buttonName == "Continent" and modifier > 3: valid = True
+                                elif buttonName == "Region" and modifier > 4: valid = True
+                                elif buttonName == "Advance Mode" and modifier < 5: valid = True
+                                if valid:
+                                    if buttonName != "Advance Mode":
+                                        self.guiDisplayData["Mode"] = buttonName
+                                        returnedScreenSurface = drawTheInterface()
+                                        self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                                        cursorSurface.fill((0, 0, 0, 0))
+                                        cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                                        self.SCREEN.blit(cursorSurface, (0, 0))
+                                        pygame.display.update()
+                                    else:
+                                        if modifier < 5:
+                                            self.worldGen.advanceStageModifier()
+                                            startTime = time.time()
+                                            print('Begining generation...')
+                                            self.worldGen.generateMap()
+                                            print(f'We finished map generation-- this took {time.time() - startTime} seconds')
+                                            self.continentData = self.worldGen.getContinentData()
+                                            self.regionData = self.worldGen.getRegionData()
+                                            self.nodeTerrainData = self.worldGen.getTerrainData()
+                                            self.terrainTypes = self.worldGen.getTerrainTypes()
+                                            returnedScreenSurface = drawTheInterface()
+                                            self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                                            cursorSurface.fill((0, 0, 0, 0))
+                                            pos = pygame.mouse.get_pos()
+                                            cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                                            self.SCREEN.blit(cursorSurface, (0, 0))
+                                            pygame.display.update()
 
                 elif userEvent.type == pygame.MOUSEMOTION:
                     self.SCREEN.blit(returnedScreenSurface, (0, 0))
                     cursorSurface.fill((0, 0, 0, 0))
+                    # noinspection PyTypeChecker
                     btnCollision = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
                     if btnCollision:
                         buttonName = btnCollision[0]
                         buttonCollidedWith = btnCollision[1]
 
                         if self.guiDisplayData.get("Mode") != buttonName:
-                            pygame.draw.rect(cursorSurface, (255, 255, 255, 32), buttonCollidedWith)
+                            modifier = self.worldGen.fetchStageModifier()
+                            valid = False
+                            if buttonName == "Terrain": valid = True
+                            elif buttonName == "Elevation" and modifier > 0: valid = True
+                            elif buttonName == "Continent" and modifier > 3: valid = True
+                            elif buttonName == "Region" and modifier > 4: valid = True
+                            elif buttonName == "Advance Mode" and modifier < 5: valid = True
+                            if valid:
+                                pygame.draw.rect(cursorSurface, (255, 255, 255, 32), buttonCollidedWith)
 
                     cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
                     self.SCREEN.blit(cursorSurface, (0, 0))
