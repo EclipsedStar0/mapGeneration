@@ -9,7 +9,7 @@ import map
 # noinspection PyPep8Naming
 class Game:
     def __init__(self):
-        self.worldMap = map.Map()
+        self.worldMap = map.Map(stageModifier=7)
         self.display = guiDisplay.Display(self)
 
         self.gameOver = False
