@@ -577,12 +577,19 @@ class Map:
             print('Begining Continent Organization...')
 
             # Note, this section down to the begining of the while loop is where all the slowdown is
-
-            for terrainType in self.terrainTypesELE:
-                if terrainType in self.terrainRecord:
-                    for nodeNum in self.terrainRecord.get(terrainType):
+            accurateContinents = False
+            if accurateContinents:
+                for nodeNum in self.nodeTerrainData:
+                    nodeInfo = self.nodeTerrainData.get(nodeNum)
+                    if nodeInfo.get("ChosenTerrain") in self.terrainTypesELE or nodeInfo.get("Elevation") > 12:
                         elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
                         elevatedAssociation[nodeNum] = [nodeNum]
+            else:
+                for terrainType in self.terrainTypesELE:
+                    if terrainType in self.terrainRecord:
+                        for nodeNum in self.terrainRecord.get(terrainType):
+                            elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
+                            elevatedAssociation[nodeNum] = [nodeNum]
 
             if not self.multiThreading:
                 for nodeNum in self.nodeTerrainData:
@@ -688,10 +695,10 @@ class Map:
             print('Begining Region Organization...')
             generateRegions = True
             if generateRegions:
-                for terrainType in self.terrainTypesELE:
-                    if terrainType in self.terrainRecord:
-                        for nodeNum in self.terrainRecord.get(terrainType):
-                            elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
+
+                # Reuse data from continents, just reset arrays
+                for nodeNum in elevationBasePoints:
+                    elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
 
                 # Now we run the while loop again, but with a distance of 16;
                 # NOTE: This code is the exact same as above with only the distance modified
@@ -750,8 +757,10 @@ class Map:
                 for continent in regionDataSave:
                     baseColor = self.continentData.get(continent).get("Color")
                     for region in regionDataSave.get(continent):
+                        maxTries, currentAttempt = 35, 0
                         redC, greenC, blueC = max(min(random.randint(-3, 3) * 15 + baseColor[0], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[1], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[2], 255), 0)
-                        while (redC, greenC, blueC) in colorCombos:
+                        while (redC, greenC, blueC) in colorCombos and currentAttempt < maxTries:
+                            currentAttempt += 1
                             redC, greenC, blueC = max(min(random.randint(-3, 3) * 15 + baseColor[0], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[1], 255), 0), max(min(random.randint(-3, 3) * 15 + baseColor[2], 255), 0)
                         colorCombos.append((redC, greenC, blueC))
                         regionDataSaveNew[region] = dict()
