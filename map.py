@@ -10,7 +10,7 @@ import customThread
 
 # noinspection PyPep8Naming
 class Map:
-    def __init__(self, stageModifier=6, seedPara=None):
+    def __init__(self, stageModifier=7, seedPara=None):
         self.width = 1024
         self.height = 576
 
@@ -57,8 +57,8 @@ class Map:
                 "Color": (0, 0, 60),
                 "PTQ": (-1, -1),
                 "HPTQ": (-1, -1),
-                "Wet": "Ice",
-                "Dry": "Plains",
+                "Wet": ["Ocean"],
+                "Dry": ["Coastal", "Coastal", "Coastal", "Ice"],
                 "EffectBonus": 0,
                 "WaterScore": 2
             },
@@ -69,8 +69,8 @@ class Map:
                 "Color": (0, 0, 120),
                 "PTQ": (-1, -1),
                 "HPTQ": (-1, -1),
-                "Wet": "Ice",
-                "Dry": "Plains",
+                "Wet": ["Coastal", "Coastal", "Ocean"],
+                "Dry": ["Ice"],
                 "EffectBonus": 0,
                 "WaterScore": 1
             },
@@ -81,10 +81,11 @@ class Map:
                 "Color": (255, 255, 255),
                 "PTQ": (0, 25),
                 "HPTQ": (0, 28),
-                "Wet": "Coastal",
-                "Dry": "Coastal",
+                "Wet": ["Coastal", "Coastal", "Coastal", "Ocean"],
+                "Dry": ["Tundra", "Coastal"],
                 "EffectBonus": -4,
-                "WaterScore": 0.5
+                "WaterScore": 0.5,
+                "Similar": ["Tundra, Taiga"]
             },
             "Tundra": {
                 "RegionSelChance": 20,
@@ -93,10 +94,11 @@ class Map:
                 "Color": (230, 230, 230),
                 "PTQ": (23, 35),
                 "HPTQ": (15, 55),
-                "Wet": "Taiga",
-                "Dry": "Tundra",
+                "Wet": ["Taiga", "Taiga", "Ice"],
+                "Dry": ["Tundra"],
                 "EffectBonus": -1,
-                "WaterScore": 0
+                "WaterScore": 0,
+                "Similar": ["Taiga"]
             },
             "Taiga": {
                 "RegionSelChance": 20,
@@ -105,22 +107,23 @@ class Map:
                 "Color": (160, 180, 160),
                 "PTQ": (25, 35),
                 "HPTQ": (17, 59),
-                "Wet": "Taiga",
-                "Dry": "Tundra",
+                "Wet": ["Taiga"],
+                "Dry": ["Tundra", "Tundra", "Tundra", "Tundra", "Forest"],
                 "EffectBonus": 0,
                 "WaterScore": 0.25
             },
             "Forest": {
                 "RegionSelChance": 20,
                 "NodeSelChance": 20,
-                "Diffusion": 0.25,
+                "Diffusion": 0.35,
                 "Color": (0, 60, 0),
                 "PTQ": (44, 63),
                 "HPTQ": (34, 85),
-                "Wet": "Forest",
-                "Dry": "Grassland",
+                "Wet": ["Forest"],
+                "Dry": ["Grassland", "Grassland", "Plains"],
                 "EffectBonus": 2,
-                "WaterScore": 0
+                "WaterScore": 0,
+                "Similar": ["Grassland"]
             },
             "Grassland": {
                 "RegionSelChance": 20,
@@ -129,22 +132,37 @@ class Map:
                 "Color": (70, 200, 50),
                 "PTQ": (43, 68),
                 "HPTQ": (33, 86),
-                "Wet": "Forest",
-                "Dry": "Plains",
+                "Wet": ["Grassland", "Forest", "Forest"],
+                "Dry": ["Plains", "Plains", "Plains", "Plains", "Plains", "Plains", "Plains", "Savannah"],
                 "EffectBonus": 1,
-                "WaterScore": 0
+                "WaterScore": 0,
+                "Similar": ["Forest", "Plains"]
             },
             "Plains": {
                 "RegionSelChance": 20,
                 "NodeSelChance": 35,
                 "Diffusion": 0.05,
                 "Color": (150, 200, 50),
-                "PTQ": (65, 85),
-                "HPTQ": (55, 90),
-                "Wet": "Grassland",
-                "Dry": "Desert",
+                "PTQ": (70, 85),
+                "HPTQ": (60, 87),
+                "Wet": ["Grassland"],
+                "Dry": ["Desert", "Desert", "Desert", "Desert", "Savannah"],
                 "EffectBonus": 0,
-                "WaterScore": 0
+                "WaterScore": 0,
+                "Similar": ["Grassland", "Savannah"]
+            },
+            "Savannah": {
+                "RegionSelChance": 10,
+                "NodeSelChance": 2,
+                "Diffusion": -0.3,
+                "Color": (170, 130, 80),
+                "PTQ": (75, 90),
+                "HPTQ": (65, 95),
+                "Wet": ["Plains", "Plains", "Plains", "Plains", "Savannah", "Oasis"],
+                "Dry": ["Desert"],
+                "EffectBonus": 0,
+                "WaterScore": -0.25,
+                "Similar": ["Savannah", "Oasis"]
             },
             "Desert": {
                 "RegionSelChance": 20,
@@ -153,10 +171,11 @@ class Map:
                 "Color": (220, 190, 50),
                 "PTQ": (80, 100),
                 "HPTQ": (75, 100),
-                "Wet": "Oasis",
-                "Dry": "Desert",
+                "Wet": ["Savannah", "Oasis", "Oasis", "Oasis", "Oasis", "Oasis", "Oasis", "Oasis"],
+                "Dry": ["Desert"],
                 "EffectBonus": 0,
-                "WaterScore": -1
+                "WaterScore": -1,
+                "Similar": ["Savannah", "Oasis"]
             },
             "Oasis": {
                 "RegionSelChance": 20,
@@ -165,10 +184,26 @@ class Map:
                 "Color": (30, 175, 140),
                 "PTQ": (90, 100),
                 "HPTQ": (80, 100),
-                "Wet": "Plains",
-                "Dry": "Desert",
+                "Wet": ["Oasis"],
+                "Dry": ["Desert", "Desert", "Desert", "Desert", "Savannah"],
                 "EffectBonus": 0,
-                "WaterScore": 0.5
+                "WaterScore": 0.5,
+                "Similar": ["Desert"]
+            },
+            "Steppe": {
+                "RegionSelChance": 20,
+                "NodeSelChance": 2,
+                "Diffusion": -0.25,
+                "Color": (150, 150, 120),
+                "PTQ": (65, 95),
+                "HPTQ": (43, 100),
+                "Wet": ["Steppe"],
+                "Dry": ["Steppe"],
+                "RangeBonus": 2,
+                "EffectBonus": 4,
+                "SelfBonus": 2,
+                "WaterScore": -0.5,
+                "Similar": ["Steppe", "Mountains"]
             },
             "Hills": {
                 "RegionSelChance": 20,
@@ -177,12 +212,13 @@ class Map:
                 "Color": (170, 150, 50),
                 "PTQ": (35, 95),
                 "HPTQ": (33, 100),
-                "Wet": "Hills",
-                "Dry": "Hills",
+                "Wet": ["Hills"],
+                "Dry": ["Hills"],
                 "RangeBonus": 3,
                 "EffectBonus": 5,
                 "SelfBonus": 4,
-                "WaterScore": -1.5
+                "WaterScore": -1.5,
+                "Similar": ["Steppe", "Mountains"]
             },
             "Mountains": {
                 "RegionSelChance": 30,
@@ -191,15 +227,16 @@ class Map:
                 "Color": (50, 50, 70),
                 "PTQ": (35, 85),
                 "HPTQ": (30, 95),
-                "Wet": "Mountains",
-                "Dry": "Mountains",
+                "Wet": ["Mountains"],
+                "Dry": ["Mountains"],
                 "RangeBonus": 5,
                 "EffectBonus": 8,
                 "SelfBonus": 5,
-                "WaterScore": -3
+                "WaterScore": -3,
+                "Similar": ["Hills"]
             }
         }
-        self.terrainTypesELE = ["Mountains", "Hills"]
+        self.terrainTypesELE = ["Mountains", "Hills", "Steppe"]
         self.terrainTypesWAT = ["Ocean, Coastal, Oasis"]
 
         self.terrainRecord = dict()
@@ -475,7 +512,7 @@ class Map:
                 for nodeNum in self.nodeTerrainData:
                     designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
                     nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
-                    if nodeElevation < -3:
+                    if nodeElevation < -4:
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = "Ocean"
@@ -488,14 +525,14 @@ class Map:
                         waterNodes.append(nodeNum)
                     elif nodeElevation < 5:
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
-                        designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                        designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                         self.terrainRecord[designatedTerrain].append(nodeNum)
                         if designatedTerrain in self.terrainTypesWAT:
                             waterNodes.append(nodeNum)
                     elif nodeElevation > 10:
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
-                        designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Dry")
+                        designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Dry"), k=1)[0]
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                         self.terrainRecord[designatedTerrain].append(nodeNum)
 
@@ -537,7 +574,7 @@ class Map:
 
                             '''if not breakedOutOfLoop:
                                 self.terrainRecord[designatedTerrain].remove(nodeNum)
-                                designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                                designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
                                 self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                                 self.terrainRecord[designatedTerrain].append(nodeNum)
                                 breakedOutOfLoop = True'''
@@ -560,9 +597,9 @@ class Map:
                             waterNodes.append(nodeNum)
                     elif waterScore / numScoreNodes > 0.25:
                         self.terrainRecord[designatedTerrain].remove(nodeNum)
-                        designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                        designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
                         if waterScore / numScoreNodes > 0.40:
-                            designatedTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
+                            designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                         self.terrainRecord[designatedTerrain].append(nodeNum)
                         if designatedTerrain in self.terrainTypesWAT:
@@ -594,14 +631,18 @@ class Map:
             if not self.multiThreading:
                 for nodeNum in self.nodeTerrainData:
                     if nodeNum not in elevationBasePoints:
-                        minDist, minNode = float('inf'), float('inf')
+                        minDist, minNode = float('inf'), None
                         for basePoint in elevationBasePoints:
                             dist = distToSplit(nodeNum, basePoint)
-                            if dist < minDist:
+                            if minNode is None:
                                 minDist = dist
                                 minNode = basePoint
-                                if minDist <= 1:
-                                    break
+                            else:
+                                if dist < minDist:
+                                    minDist = dist
+                                    minNode = basePoint
+                            if minDist <= 1:
+                                break
                         elevationBasePoints[minNode]["Nodes"].append(nodeNum)
                         elevatedAssociation[minNode].append(nodeNum)
             else:
@@ -634,7 +675,7 @@ class Map:
                                     if otherElevatedNode != basePoint:
                                         dist = min(distToSplit(otherElevatedNode, basePoint2), dist)
                                 # 16, 18, 19, 24
-                                if dist <= 18:
+                                if dist <= 17:
                                     proceed = False
                                     if basePoint2 in markedSubCat:
                                         baseData = markedSubCat.get(basePoint2)
@@ -714,42 +755,46 @@ class Map:
                     regionDataSave[continent] = dict()
                     regionRun = 0
                     regionFlagger = False
-                    while runAgain or regionFlagger:
-                        runAgain = False
-                        print(f'--Run #{regionRun}')
-                        regionRun += 1
-                        while elevatedNodesLeft:
-                            randIndex = elevatedNodesLeft[random.randint(0, len(elevatedNodesLeft) - 1)]
-                            randNode = elevatedNodesToUse[randIndex]
-                            elevatedNodesLeft.remove(randIndex)
-                            markedForChange = []
-                            for regionElevatedNode in elevatedNodesToUse:
-                                if regionElevatedNode != randNode:
-                                    dist = distToSplit(randNode, regionElevatedNode)
-                                    if dist <= 18:
-                                        markedForChange.append(regionElevatedNode)
-                                    else:
-                                        if randNode in regionDataSave.get(continent):
-                                            for entry in regionDataSave.get(continent).get(randNode):
-                                                dist = distToSplit(entry, regionElevatedNode)
-                                                if dist <= 18:
-                                                    markedForChange.append(regionElevatedNode)
-                                                    break
-                            if len(markedForChange) > 0:
-                                runAgain = True
-                                if randNode not in regionDataSave.get(continent):
-                                    regionDataSave[continent][randNode] = [randNode]
-                                for entry in markedForChange:
-                                    regionDataSave[continent][randNode].append(entry)
-                                    if entry in regionDataSave.get(continent):
-                                        regionDataSave[continent][randNode] += regionDataSave.get(continent).get(entry)
-                                        del regionDataSave[continent][entry]
-                            else:
-                                if not regionFlagger:
-                                    regionFlagger = True
+
+                    if len(elevatedNodesToUse) == 1:
+                        regionDataSave[continent][elevatedNodesToUse[0]] = [elevatedNodesToUse[0]]
+                    else:
+                        while runAgain or regionFlagger:
+                            runAgain = False
+                            print(f'--Run #{regionRun}')
+                            regionRun += 1
+                            while elevatedNodesLeft:
+                                randIndex = elevatedNodesLeft[random.randint(0, len(elevatedNodesLeft) - 1)]
+                                randNode = elevatedNodesToUse[randIndex]
+                                elevatedNodesLeft.remove(randIndex)
+                                markedForChange = []
+                                for regionElevatedNode in elevatedNodesToUse:
+                                    if regionElevatedNode != randNode:
+                                        dist = distToSplit(randNode, regionElevatedNode)
+                                        if dist <= 18:
+                                            markedForChange.append(regionElevatedNode)
+                                        else:
+                                            if randNode in regionDataSave.get(continent):
+                                                for entry in regionDataSave.get(continent).get(randNode):
+                                                    dist = distToSplit(entry, regionElevatedNode)
+                                                    if dist <= 18:
+                                                        markedForChange.append(regionElevatedNode)
+                                                        break
+                                if len(markedForChange) > 0:
+                                    runAgain = True
+                                    if randNode not in regionDataSave.get(continent):
+                                        regionDataSave[continent][randNode] = [randNode]
+                                    for entry in markedForChange:
+                                        regionDataSave[continent][randNode].append(entry)
+                                        if entry in regionDataSave.get(continent):
+                                            regionDataSave[continent][randNode] += regionDataSave.get(continent).get(entry)
+                                            del regionDataSave[continent][entry]
                                 else:
-                                    regionFlagger = False
-                                    break
+                                    if not regionFlagger:
+                                        regionFlagger = True
+                                    else:
+                                        regionFlagger = False
+                                        break
 
                     print(f'--Finished Continent #{continentRun}')
 
@@ -824,7 +869,7 @@ class Map:
             for river in self.riverDict:
                 for nodeNum in self.riverDict.get(river).get("Nodes"):
                     designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
-                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = self.terrainTypes.get(designatedTerrain).get("Wet")
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
                     self.terrainRecord[designatedTerrain].remove(nodeNum)
                     self.terrainRecord[self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")].append(nodeNum)
             print('-River Spread Complete')

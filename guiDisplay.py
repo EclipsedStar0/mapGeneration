@@ -75,7 +75,7 @@ class Display:
                         designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
                         if nodeElevation is None:
                             print(f'ERROR! Node #{self.nodeTerrainData.get(nodeNum)} is missing elevation!')
-                        if nodeElevation < -3 or designatedTerrain == "Ocean":
+                        if nodeElevation < -4 or designatedTerrain == "Ocean":
                             color = (0, 0, 60)
                         elif nodeElevation <= 1.5 or designatedTerrain == "Coastal":
                             color = (0, 0, 120)
