@@ -2,32 +2,6 @@ import threading
 
 
 # noinspection PyPep8Naming
-class noiseGenThread(threading.Thread):
-    def __init__(self, noiseInstance, cX, cY, precision, factorAdjust, nxDictFed, nyFed):
-        threading.Thread.__init__(self)
-        self.noiseInstance = noiseInstance
-        self.column = cX
-        self.row = cY
-        self.designatedPrecision = precision
-        self.factorAdjust = factorAdjust
-        self.noiseVal = 0
-
-        self.nxDictGet = nxDictFed.get(self.column)
-        self.nyGet = nyFed
-
-    def run(self):
-        for precision in range(self.designatedPrecision):
-            self.noiseVal += 1 / pow(2, precision) * (self.noiseInstance.noise((pow(2, precision) * self.nxDictGet, pow(2, precision) * self.nyGet)))
-
-        modifier = -1
-        if self.noiseVal >= 0: modifier = 1
-        self.noiseVal = modifier * pow(abs(self.noiseVal), self.factorAdjust)
-
-    def getVal(self):
-        return self.noiseVal, self.column, self.row
-
-
-# noinspection PyPep8Naming
 class mapRadialSearchThread(threading.Thread):
     def __init__(self, nodeX, nodeY, cX, cY, rows, columns, radialSearch, terrainTypes, nodeTerrainData):
         threading.Thread.__init__(self)
@@ -55,21 +29,30 @@ class mapRadialSearchThread(threading.Thread):
                     lattitudePQT = 100 - abs(1 - 2 * self.cY / self.rows) * 100
 
                     self.diffuseWeight = self.terrainTypes.get(self.diffuseTerrain).get("NodeSelChance")
+                    diffusionVal = self.terrainTypes.get(self.diffuseTerrain).get("Diffusion")
                     if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
                         # Fetch our distance from the center of the range
-                        temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 50
-                        self.diffuseWeight = max(self.diffuseWeight - pow(temp, 1.1), 1)
+                        temp = abs(lattitudePQT - abs(terrainPTQ[1] - terrainPTQ[0]) / 2) / 50
+                        self.diffuseWeight = max(self.diffuseWeight - pow(temp, 1.1), 0)
                     else:
                         terrainHPTQ = self.terrainTypes.get(self.diffuseTerrain).get("HPTQ")
                         if terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
                             # Fetch our distance from the center of the range
-                            temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
-                            self.diffuseWeight = max(self.diffuseWeight - pow(temp, 2.5), 1)
+                            temp = abs(lattitudePQT - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2) / 50
+                            self.diffuseWeight = max(self.diffuseWeight - pow(temp, 2.5), 0)
                         else:
-                            temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
-                            self.diffuseWeight = 0.25 * max(self.diffuseWeight - pow(temp, 3.25), 1)
+                            temp = abs(lattitudePQT - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2) / 50
+                            self.diffuseWeight = 0.25 * max(self.diffuseWeight - pow(temp, 3.25), 0)
                             # diffuseWeight *= 0.25
-                    self.diffuseWeight = self.diffuseWeight / pow(distToDiffuseNode - 0.75, 0.7)
+
+                    if self.diffuseWeight > 0:
+                        self.diffuseWeight = self.diffuseWeight + pow(self.diffuseWeight, diffusionVal)
+                        # diffuseWeight *= 0.25
+                        self.diffuseWeight = self.diffuseWeight / pow(distToDiffuseNode + 1, 0.7)
+                        if self.diffuseWeight >= 1:
+                            self.diffuseWeight = pow(self.diffuseWeight, diffusionVal + 1)
+                    else:
+                        self.diffuseWeight = 0
                 else:
                     self.mode = False
             else:
@@ -124,11 +107,11 @@ class mapCoastalConverEle(threading.Thread):
         designatedTerrain = self.nodeTerrainData.get(self.nodeNum).get("ChosenTerrain")
         self.prevTerrain, self.newTerrain = designatedTerrain, designatedTerrain
         nodeElevation = self.nodeTerrainData.get(self.nodeNum).get("Elevation")
-        if nodeElevation < -1:
+        if nodeElevation < -4 and designatedTerrain != "Ocean":
             self.newTerrain = "Ocean"
-        elif nodeElevation < 1:
+        elif nodeElevation < 1.5 and designatedTerrain != "Coastal":
             self.newTerrain = "Coastal"
-        elif nodeElevation < 1.5:
+        elif nodeElevation < 4 and designatedTerrain != "Ocean" and designatedTerrain != "Coastal" and designatedTerrain != "Oasis" and designatedTerrain != "Ice":
             self.newTerrain = self.terrainTypes.get(designatedTerrain).get("Wet")
         elif nodeElevation > 10:
             self.newTerrain = self.terrainTypes.get(designatedTerrain).get("Dry")

@@ -533,6 +533,7 @@ class Map:
                         waterNodes.append(nodeNum)
 
             '''Currently, default approach is faster than multithreading'''
+            # 15.4 / 3 (Multi) > 1.24300 / 3 (Default)
             # This approach also seems to create slight deviations from the default approach
             if self.multiThreading and False:
                 runningThreads = []
@@ -543,12 +544,18 @@ class Map:
                 for newThread in runningThreads:
                     newThread.join()
                     values = newThread.getVal()
-                    if values[0] != values[1]:
+                    newTerrain = values[0]
+                    if isinstance(values[0], list):
+                        newTerrain = random.choices(values[0], k=1)[0]
+                    if newTerrain != values[1]:
                         self.terrainRecord[values[1]].remove(values[2])
-                        self.nodeTerrainData[values[2]]["ChosenTerrain"] = values[0]
-                        self.terrainRecord[values[0]].append(values[2])
-                        if values[0] == "Ocean" or values[0] == "Coastal":
+                        self.nodeTerrainData[values[2]]["ChosenTerrain"] = newTerrain
+                        self.terrainRecord[newTerrain].append(values[2])
+                        if newTerrain in self.terrainTypesWAT:
                             waterNodes.append(values[2])
+                    elif newTerrain in self.terrainTypesWAT:
+                        waterNodes.append(values[2])
+
             else:
                 for nodeNum in self.nodeTerrainData:
                     designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
@@ -576,6 +583,7 @@ class Map:
                         designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Dry"), k=1)[0]
                         self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
                         self.terrainRecord[designatedTerrain].append(nodeNum)
+            print(f'-Coastal Conversion w/ Elevation Complete')
 
         if self.stageModifier > 3:
             print('Begining Coastal Conversion w/ Proximity')
@@ -951,113 +959,6 @@ class Map:
                     self.terrainRecord[designatedTerrain].remove(nodeNum)
                     self.terrainRecord[self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")].append(nodeNum)
             print('-River Spread Complete')
-
-    def generateMapOld1(self):
-        for row in range(0, self.rows):
-            lattitudePQT = 100 - abs(1 - 2 * row / self.rows) * 100
-            allowedTerrainsForLAT = []
-            allowedTerrainsWeight = []
-
-            for terrainEntry in self.terrainTypes:
-                terrainPTQ = self.terrainTypes.get(terrainEntry).get("PTQ")
-                terrainHPTQ = self.terrainTypes.get(terrainEntry).get("HPTQ")
-                if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
-                    allowedTerrainsForLAT.append(terrainEntry)
-                    fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
-                    # Fetch our distance from the center of the range
-                    temp = abs(lattitudePQT - abs(terrainPTQ[1] - terrainPTQ[0]) / 2) / 20
-                    fetchedWeight = max(fetchedWeight - pow(temp, 1.1), 1)
-                    allowedTerrainsWeight.append(fetchedWeight)
-                elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
-                    allowedTerrainsForLAT.append(terrainEntry)
-                    fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
-                    # Fetch our distance from the center of the range
-                    temp = abs(terrainPTQ - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2) / 20
-                    fetchedWeight = max(fetchedWeight - pow(temp, 2.5), 1)
-                    allowedTerrainsWeight.append(fetchedWeight)
-            for column in range(0, self.columns):
-                nodeNum = row * self.columns + column
-                designatedTerrain = random.choices(allowedTerrainsForLAT, allowedTerrainsWeight, k=1)[0]
-                self.nodeTerrainData[nodeNum] = dict()
-                self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
-
-    # noinspection PyPep8Naming
-    def generateMapOld(self):
-        terrainArr2 = []
-        for terrainType2 in self.terrainTypes:
-            terrainArr2.append(terrainType2)
-
-        def distTo(nodeNum1, nodeNum2):
-            nodeNum1x, nodeNum1y = nodeNum1 % self.columns, int(nodeNum1 / self.columns)
-            nodeNum2x, nodeNum2y = nodeNum2 % self.columns, int(nodeNum2 / self.columns)
-            return pow(pow(nodeNum2x - nodeNum1x, 2) + pow(nodeNum2y - nodeNum1y, 2), 0.5)
-
-        def assignRegions(terrainArr, regionSpawnTile):
-            output = None
-            proxyTArr = []
-            designatedWeightsArr = []
-            for terrainType in self.terrainTypes:
-                # noinspection PyTypeChecker
-                weight = pow(self.terrainTypes.get(terrainType).get("RegionSelChance") / (self.terrainRecord.get(terrainType) + 1), 0.4)
-                designatedWeightsArr.append(weight)
-
-            output = random.choices(terrainArr, designatedWeightsArr, k=1)[0]
-            self.terrainRecord[output] += 1
-            return output
-
-        nodeTerrainData = dict()
-
-        regionSpawnTiles = []
-        maxNodes = self.rows * self.height
-        for currentRegionSpawn in range(int(pow(self.rows * self.height, 0.4))):
-            randomNode = random.randint(0, maxNodes - 1)
-            while randomNode in regionSpawnTiles:
-                randomNode = random.randint(0, maxNodes - 1)
-            regionSpawnTiles.append(randomNode)
-
-        for regionSpawn in regionSpawnTiles:
-            nodeTerrainData[regionSpawn] = dict()
-            designatedTerrain = assignRegions(terrainArr2, regionSpawn)
-            nodeTerrainData[regionSpawn]["ChosenTerrain"] = designatedTerrain
-            nodeTerrainData[regionSpawn]["Weight"] = [self.terrainTypes.get(designatedTerrain).get("NodeSelChance")]
-
-        for currentIteration in range(0, maxNodes - len(regionSpawnTiles)):
-            selectedNode = random.randint(0, maxNodes - 1)
-            success = False
-            while not success:
-                if selectedNode in regionSpawnTiles or selectedNode in nodeTerrainData:
-                    if "ChosenTerrain" not in nodeTerrainData.get(selectedNode):
-                        success = True
-                        nodeTerrainData[selectedNode] = dict()
-                    else:
-                        selectedNode = random.randint(0, maxNodes - 1)
-                else:
-                    success = True
-                    nodeTerrainData[selectedNode] = dict()
-
-            nodeTerrainData[selectedNode]["Weight"] = dict()
-
-            # This part can be parallelized
-            for regionSpawn in regionSpawnTiles:
-                distance = distTo(selectedNode, regionSpawn)
-                regionTerrain = nodeTerrainData.get(regionSpawn).get("ChosenTerrain")
-                weightUsed = self.terrainTypes.get(regionTerrain).get("NodeSelChance") - pow(distance, 1.2 - self.terrainTypes.get(regionTerrain).get("Diffusion"))
-                if distance > 10:
-                    weightUsed = max(weightUsed, pow(2 * (pow(distance, 2.7) / pow(distance, 3)), 7))
-                if regionTerrain not in nodeTerrainData.get(selectedNode).get("Weight"):
-                    nodeTerrainData[selectedNode]["Weight"][regionTerrain] = weightUsed
-                else:
-                    nodeTerrainData[selectedNode]["Weight"][regionTerrain] += weightUsed
-
-            proxyArrForTerrain = []
-            proxyArrForWeight = []
-            for regionTerrain in nodeTerrainData.get(selectedNode).get("Weight"):
-                proxyArrForTerrain.append(regionTerrain)
-                proxyArrForWeight.append(nodeTerrainData.get(selectedNode).get("Weight").get(regionTerrain))
-            selectedTerrain = random.choices(proxyArrForTerrain, proxyArrForWeight, k=1)[0]
-            nodeTerrainData[selectedNode]["ChosenTerrain"] = selectedTerrain
-
-        self.nodeTerrainData = nodeTerrainData
 
     def getAdjustFactor(self):
         return self.adjustFactor
