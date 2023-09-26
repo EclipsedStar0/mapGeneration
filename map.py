@@ -299,14 +299,14 @@ class Map:
                 if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
                     fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
                     # Fetch our distance from the center of the range
-                    temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 20
-                    fetchedWeight = max(fetchedWeight - pow(temp, 1.1), 1)
+                    temp = abs(lattitudePQT - abs(terrainPTQ[1] - terrainPTQ[0]) / 2) / 20
+                    fetchedWeight = max(fetchedWeight - pow(temp, 1.1), 0)
                     terrainWeightArr[terrainEntry] = fetchedWeight
                 elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
                     fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
                     # Fetch our distance from the center of the range
-                    temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 20
-                    fetchedWeight = max(fetchedWeight - pow(temp, 2.5), 1)
+                    temp = abs(lattitudePQT - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2) / 20
+                    fetchedWeight = max(fetchedWeight - pow(temp, 2.5), 0)
                     terrainWeightArr[terrainEntry] = fetchedWeight
 
             if self.stageModifier <= 0:
@@ -323,6 +323,34 @@ class Map:
                     nodeNum = row * self.columns + column
                     self.nodeTerrainData[nodeNum] = dict()
                     self.nodeTerrainData[nodeNum]["Weights"] = terrainWeightArr
+                '''randomChance = random.randint(0, 100)
+                if randomChance > 85:
+                    nodeNum = row*self.columns + random.randint(0, self.columns-1)
+                    tWeightArr = []
+                    tTypeArr = []
+                    for terrainEntry in self.terrainTypes:
+                        terrainPTQ = self.terrainTypes.get(terrainEntry).get("PTQ")
+                        terrainHPTQ = self.terrainTypes.get(terrainEntry).get("HPTQ")
+                        if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
+                            fetchedWeight = self.terrainTypes.get(terrainEntry).get("RegionSelChance")
+                            # Fetch our distance from the center of the range
+                            temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 20
+                            fetchedWeight = max(fetchedWeight - pow(temp, 1.1), 0)
+                            tWeightArr.append(fetchedWeight)
+                            tTypeArr.append(terrainEntry)
+                        elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
+                            fetchedWeight = self.terrainTypes.get(terrainEntry).get("RegionSelChance")
+                            # Fetch our distance from the center of the range
+                            temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 20
+                            fetchedWeight = max(fetchedWeight - pow(temp, 2.5), 0)
+                            tWeightArr.append(fetchedWeight)
+                            tTypeArr.append(terrainEntry)
+                    designatedTerrain = random.choices(tTypeArr, tWeightArr, k=1)[0]
+                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                    if designatedTerrain not in self.terrainRecord:
+                        self.terrainRecord[designatedTerrain] = []
+                    self.terrainRecord[designatedTerrain].append(nodeNum)
+                    instancedNodes[nodeNum] = True'''
 
             if len(terrainWeightArr) < 1:
                 print("Missing potential selection!!")
@@ -363,19 +391,25 @@ class Map:
                                     lattitudePQT = 100 - abs(1 - 2 * cY / self.rows) * 100
 
                                     diffuseWeight = self.terrainTypes.get(diffuseTerrain).get("NodeSelChance")
+                                    diffusionVal = self.terrainTypes.get(diffuseTerrain).get("Diffusion")
                                     if terrainPTQ[0] <= lattitudePQT <= terrainPTQ[1]:
                                         # Fetch our distance from the center of the range
-                                        temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 50
-                                        diffuseWeight = max(diffuseWeight - pow(temp, 1.1), 1)
+                                        temp = abs(lattitudePQT - abs(terrainPTQ[1] - terrainPTQ[0]) / 2) / 50
+                                        diffuseWeight = max(diffuseWeight - pow(temp, 1.1-diffusionVal), 0)
                                     elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
                                         # Fetch our distance from the center of the range
-                                        temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
-                                        diffuseWeight = max(diffuseWeight - pow(temp, 2.5), 1)
+                                        temp = abs(lattitudePQT - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2) / 50
+                                        diffuseWeight = max(diffuseWeight - pow(temp, 2.5-diffusionVal), 0)
                                     else:
-                                        temp = abs(lattitudePQT - abs(terrainHPTQ[0] - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2)) / 50
-                                        diffuseWeight = 0.25 * max(diffuseWeight - pow(temp, 3.25), 1)
-                                    # diffuseWeight *= 0.25
-                                    diffuseWeight = diffuseWeight / pow(distToDiffuseNode - 0.75, 0.7)
+                                        temp = abs(lattitudePQT - abs(terrainHPTQ[1] - terrainHPTQ[0]) / 2) / 50
+                                        diffuseWeight = 0.25 * max(diffuseWeight - pow(temp, 3.25-diffusionVal), 0)
+                                    if diffuseWeight > 0:
+                                        diffuseWeight = diffuseWeight + pow(diffuseWeight, diffusionVal)
+                                        # diffuseWeight *= 0.25
+                                        diffuseWeight = diffuseWeight / pow(distToDiffuseNode + 1, 0.7)
+                                        if diffuseWeight >= 1:
+                                            diffuseWeight = pow(diffuseWeight, diffusionVal + 1)
+                                    else: diffuseWeight = 0
 
                                     if diffuseTerrain not in self.nodeTerrainData.get(nodeNum).get("Weights"):
                                         self.nodeTerrainData[nodeNum]["Weights"][diffuseTerrain] = diffuseWeight
@@ -887,14 +921,14 @@ class Map:
                     allowedTerrainsForLAT.append(terrainEntry)
                     fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
                     # Fetch our distance from the center of the range
-                    temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 20
+                    temp = abs(lattitudePQT - abs(terrainPTQ[1] - terrainPTQ[0]) / 2) / 20
                     fetchedWeight = max(fetchedWeight - pow(temp, 1.1), 1)
                     allowedTerrainsWeight.append(fetchedWeight)
                 elif terrainHPTQ[0] <= lattitudePQT <= terrainHPTQ[1]:
                     allowedTerrainsForLAT.append(terrainEntry)
                     fetchedWeight = self.terrainTypes.get(terrainEntry).get("NodeSelChance")
                     # Fetch our distance from the center of the range
-                    temp = abs(lattitudePQT - abs(terrainPTQ[0] - abs(terrainPTQ[1] - terrainPTQ[0]) / 2)) / 20
+                    temp = abs(lattitudePQT - abs(terrainPTQ[1] - terrainPTQ[0]) / 2) / 20
                     fetchedWeight = max(fetchedWeight - pow(temp, 2.5), 1)
                     allowedTerrainsWeight.append(fetchedWeight)
             for column in range(0, self.columns):
