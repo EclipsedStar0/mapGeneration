@@ -198,8 +198,10 @@ class Map:
 
                 diffuseThreads = []
 
-                for cY in range(max(nodeY - self.radialSearch, 0), min(nodeY + self.radialSearch + 1, self.rows)):
-                    for cX in range(max(nodeX - self.radialSearch, 0), min(nodeX + self.radialSearch + 1, self.columns)):
+                for elemY in range(nodeY - self.radialSearch, nodeY + self.radialSearch + 1):
+                    cY = elemY % self.rows
+                    for elemX in range(nodeX - self.radialSearch, nodeX + self.radialSearch + 1):
+                        cX = elemX % self.columns
                         diffuseNodeNum = cY * self.columns + cX
                         if diffuseNodeNum in instancedNodes and diffuseNodeNum != nodeNum:
                             # This thread is very ineffective
@@ -208,7 +210,10 @@ class Map:
                                 newThread.start()
                                 diffuseThreads.append(newThread)
                             else:
-                                distToDiffuseNode = distToGiven(nodeX, nodeY, cX, cY)
+                                if elemY * self.columns + elemX == diffuseNodeNum:
+                                    distToDiffuseNode = distToGiven(nodeX, nodeY, elemX, elemY)
+                                else:
+                                    distToDiffuseNode = distToGiven(nodeX, nodeY, cX, cY)
                                 if distToDiffuseNode <= self.radialSearch:
                                     # We fall within the boundaries to affect this node
                                     diffuseTerrainInfo = self.nodeTerrainData.get(diffuseNodeNum)
@@ -303,11 +308,16 @@ class Map:
                 nodeElevation = self.elevationGrid.get(nodeNum)
                 self.nodeTerrainData[nodeNum]["Elevation"] = nodeElevation
 
-                for cY in range(max(nodeY - rangeBonus * 2 - random.randint(0, 1), 0), min(nodeY + rangeBonus * 2 + random.randint(0, 1) + 1, self.rows)):
-                    for cX in range(max(nodeX - rangeBonus * 2 - random.randint(0, 1), 0), min(nodeX + rangeBonus * 2 + random.randint(0, 1) + 1, self.columns)):
+                for elemY in range(nodeY - rangeBonus * 2 - random.randint(0, 1), nodeY + rangeBonus * 2 + random.randint(0, 1) + 1):
+                    cY = elemY % self.rows
+                    for elemX in range(nodeX - rangeBonus * 2 - random.randint(0, 1), nodeX + rangeBonus * 2 + random.randint(0, 1) + 1):
+                        cX = elemX % self.columns
                         diffuseNodeNum = cY * self.columns + cX
                         if diffuseNodeNum not in elevatedNodes:
-                            distToDiffuseNode = distToGiven(nodeX, nodeY, cX, cY)
+                            if elemY * self.columns + elemX == diffuseNodeNum:
+                                distToDiffuseNode = distToGiven(nodeX, nodeY, elemX, elemY)
+                            else:
+                                distToDiffuseNode = distToGiven(nodeX, nodeY, cX, cY)
                             if distToDiffuseNode < rangeBonus * 2.9:
                                 diffuseElevation = nodeElevation / pow(distToDiffuseNode, 0.7) - effectBonus / rangeBonus
                                 designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
@@ -449,8 +459,10 @@ class Map:
                     waterScore = self.terrainTypes.get(designatedTerrain).get("WaterScore")
                     numScoreNodes = 1
                     coastalSearchRange = 2
-                    for cY in range(max(nodeY - coastalSearchRange, 0), min(nodeY + coastalSearchRange + 1, self.rows)):
-                        for cX in range(max(nodeX - coastalSearchRange, 0), min(nodeX + coastalSearchRange + 1, self.columns)):
+                    for elemY in range(nodeY - coastalSearchRange, nodeY + coastalSearchRange + 1):
+                        cY = elemY % self.rows
+                        for elemX in range(nodeX - coastalSearchRange, nodeX + coastalSearchRange + 1):
+                            cX = elemX % self.columns
                             diffuseNodeNum = cY * self.columns + cX
                             # diffuseTerrain = self.nodeTerrainData.get(diffuseNodeNum).get("ChosenTerrain")
                             numScoreNodes += 1
@@ -540,6 +552,7 @@ class Map:
 
         elevationBasePoints = dict()
         elevatedAssociation = dict()
+        altPoint = dict()
         colorCombos = []
         if self.stageModifier > 4:
             print('Begining Continent Organization...')
@@ -558,13 +571,27 @@ class Map:
                         for nodeNum in self.terrainRecord.get(terrainType):
                             elevationBasePoints[nodeNum] = {"Elevated": [nodeNum], "Nodes": [nodeNum]}
                             elevatedAssociation[nodeNum] = [nodeNum]
-
             if not self.multiThreading:
                 for nodeNum in self.nodeTerrainData:
                     if nodeNum not in elevationBasePoints:
                         minDist, minNode = float('inf'), None
+                        nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
+                        if nodeX > self.columns - 8:
+                            nodeX = (nodeX + 8) % self.columns
+                        elif nodeX < 8:
+                            nodeX = (nodeX - 8) % self.columns
+
+                        if nodeY > self.rows - 8:
+                            nodeY = (nodeY + 8) % self.rows
+                        elif nodeX < 8:
+                            nodeY = (nodeY - 8) % self.rows
+
+                        proxyNodeNum = nodeY * self.columns + nodeX
+                        altPoint[nodeNum] = proxyNodeNum
                         for basePoint in elevationBasePoints:
                             dist = distToSplit(nodeNum, basePoint)
+                            if proxyNodeNum != nodeNum:
+                                dist = min(distToSplit(proxyNodeNum, basePoint), dist)
                             if minNode is None:
                                 minDist = dist
                                 minNode = basePoint
@@ -576,6 +603,20 @@ class Map:
                                 break
                         elevationBasePoints[minNode]["Nodes"].append(nodeNum)
                         elevatedAssociation[minNode].append(nodeNum)
+                    else:
+                        nodeX, nodeY = nodeNum % self.columns, nodeNum // self.columns
+                        if nodeX > self.columns - 8:
+                            nodeX = (nodeX + 8) % self.columns
+                        elif nodeX < 8:
+                            nodeX = (nodeX - 8) % self.columns
+
+                        if nodeY > self.rows - 8:
+                            nodeY = (nodeY + 8) % self.rows
+                        elif nodeX < 8:
+                            nodeY = (nodeY - 8) % self.rows
+
+                        proxyNodeNum = nodeY * self.columns + nodeX
+                        altPoint[nodeNum] = proxyNodeNum
             else:
                 runningThreads = []
                 for nodeNum in self.nodeTerrainData:
@@ -587,6 +628,7 @@ class Map:
                     values = newThread.getVal()
                     elevationBasePoints[values[1]]["Nodes"].append(values[0])
                     elevatedAssociation[values[1]].append(values[0])
+                    altPoint[values[0]] = values[2]
 
             # Generate Continents
             runAgain = True
@@ -602,11 +644,24 @@ class Map:
                         for basePoint2 in elevationBasePoints:
                             if basePoint != basePoint2:
                                 dist = distToSplit(basePoint, basePoint2)
+                                proxyNodeNum = altPoint.get(basePoint2)
+                                if proxyNodeNum != basePoint2:
+                                    dist = min(distToSplit(basePoint, basePoint2), dist)
+
                                 for otherElevatedNode in elevationBasePoints.get(basePoint).get("Elevated"):
                                     if otherElevatedNode != basePoint:
                                         dist = min(distToSplit(otherElevatedNode, basePoint2), dist)
+                                        proxyNodeNum2 = altPoint.get(otherElevatedNode)
+                                        if proxyNodeNum2 != otherElevatedNode:
+                                            try:
+                                                dist = min(distToSplit(proxyNodeNum2, basePoint2), dist)
+                                            except TypeError:
+                                                print(proxyNodeNum2, otherElevatedNode)
+                                                print(altPoint)
+                                                raise Exception
+
                                 # 16, 18, 19, 24
-                                if dist <= 17:
+                                if dist <= 18:
                                     proceed = False
                                     if basePoint2 in markedSubCat:
                                         baseData = markedSubCat.get(basePoint2)
@@ -701,12 +756,18 @@ class Map:
                                 for regionElevatedNode in elevatedNodesToUse:
                                     if regionElevatedNode != randNode:
                                         dist = distToSplit(randNode, regionElevatedNode)
+                                        proxyNodeNum = altPoint.get(regionElevatedNode)
+                                        if proxyNodeNum != regionElevatedNode:
+                                            dist = min(distToSplit(randNode, regionElevatedNode), dist)
                                         if dist <= 18:
                                             markedForChange.append(regionElevatedNode)
                                         else:
                                             if randNode in regionDataSave.get(continent):
                                                 for entry in regionDataSave.get(continent).get(randNode):
                                                     dist = distToSplit(entry, regionElevatedNode)
+                                                    proxyNodeNum2 = altPoint.get(entry)
+                                                    if proxyNodeNum2 != entry:
+                                                        dist = min(distToSplit(proxyNodeNum2, regionElevatedNode), dist)
                                                     if dist <= 18:
                                                         markedForChange.append(regionElevatedNode)
                                                         break
@@ -768,8 +829,10 @@ class Map:
                         currentNodeEle = self.nodeTerrainData.get(currentNode).get("Elevation")
                         adjacentNodes = []
                         elevationArr = []
-                        for row in range(max(currentNY-1, 0), min(currentNY+1+1, self.rows)):
-                            for column in range(max(currentNX-1, 0), min(currentNX+1+1, self.columns)):
+                        for pRow in range(currentNY - 1, 0, currentNY + 1 + 1):
+                            row = pRow % self.rows
+                            for pColumn in range(currentNX - 1, currentNX + 1 + 1):
+                                column = pColumn % self.columns
                                 nodeNum = row * self.columns + column
                                 elevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
                                 if elevation < currentNodeEle * 1.30 and nodeNum not in riverNodes:
@@ -799,8 +862,10 @@ class Map:
                             currentNodeEle = self.nodeTerrainData.get(currentNode).get("Elevation")
                             adjacentNodes = []
                             elevationArr = []
-                            for row in range(max(currentNY - 1, 0), min(currentNY + 1 + 1, self.rows)):
-                                for column in range(max(currentNX - 1, 0), min(currentNX + 1 + 1, self.columns)):
+                            for pRow in range(currentNY - 1, 0, currentNY + 1 + 1):
+                                row = pRow % self.rows
+                                for pColumn in range(currentNX - 1, currentNX + 1 + 1):
+                                    column = pColumn % self.columns
                                     nodeNum = row * self.columns + column
                                     elevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
                                     if elevation < currentNodeEle * 1.30 and nodeNum not in riverNodes:
@@ -850,8 +915,6 @@ class Map:
                     if designatedTerrain not in self.terrainRecord:
                         self.terrainRecord[designatedTerrain] = set()
                     self.terrainRecord[designatedTerrain].add(nodeNum)
-
-
 
             print('-River Spread Complete')
 

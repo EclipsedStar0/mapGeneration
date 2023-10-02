@@ -71,17 +71,33 @@ class mapAssociatedElevThread(threading.Thread):
         self.nodeTerrainData = tData
         self.elevationBasePoints = eleData
         self.columns, self.rows = columns, rows
+        self.alternate = self.nodeNum
 
     def run(self):
         def distTo(nodeNum1x, nodeNum1y, nodeNum2):
             nodeNum2x, nodeNum2y = nodeNum2 % self.columns, int(nodeNum2 / self.columns)
             return pow(pow(nodeNum2x-nodeNum1x, 2) + pow(nodeNum2y-nodeNum1y, 2), 0.5)
 
-        nodeNumx, nodeNumy = self.nodeNum % self.columns, int(self.nodeNum / self.columns)
+        nodeNumX, nodeNumY = self.nodeNum % self.columns, self.nodeNum // self.columns
+        pnodeNumX, pnodeNumY = nodeNumX, nodeNumY
+        if pnodeNumX > self.columns - 8:
+            pnodeNumX = (pnodeNumX + 8) % self.columns
+        elif nodeNumX < 8:
+            pnodeNumX = (pnodeNumX - 8) % self.columns
+
+        if pnodeNumY > self.rows - 8:
+            pnodeNumY = (pnodeNumY + 8) % self.rows
+        elif nodeNumY < 8:
+            pnodeNumY = (pnodeNumY - 8) % self.rows
+        self.alternate = pnodeNumY * self.columns + pnodeNumX
+
         if self.nodeNum not in self.elevationBasePoints:
             minDist, minNode = float('inf'), float('inf')
             for basePoint in self.elevationBasePoints:
-                dist = distTo(nodeNumx, nodeNumy, basePoint)
+                dist = distTo(nodeNumX, nodeNumY, basePoint)
+                if self.alternate != self.nodeNum:
+                    dist = min(distTo(pnodeNumX, pnodeNumY, basePoint), dist)
+
                 if dist < minDist:
                     minDist = dist
                     self.minNode = basePoint
@@ -89,7 +105,7 @@ class mapAssociatedElevThread(threading.Thread):
                         break
 
     def getVal(self):
-        return self.nodeNum, self.minNode
+        return self.nodeNum, self.minNode, self.alternate
 
 
 # noinspection PyPep8Naming
