@@ -70,6 +70,17 @@ class Display:
                     color = (0, 0, 0)
                     if mode == "Terrain":
                         color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
+                    elif mode == "Simple":
+                        color = (0, 0, 0)
+                        typeOTerrain = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Type")
+                        if typeOTerrain == "Water":
+                            color = (0, 0, 120)
+                        elif typeOTerrain == "Woodland":
+                            color = (20, 130, 0)
+                        elif typeOTerrain == "Flat":
+                            color = (60, 170, 30)
+                        elif typeOTerrain == "Elevated":
+                            color = (40, 30, 10)
                     elif mode == "Elevation" or mode == "River":
                         nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
                         designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
@@ -131,6 +142,7 @@ class Display:
             # Draw bottom row buttons
             startHeight = self.height - self.addedHeight
             terrainC = (70, 170, 70)
+            simpleC = (120, 230, 120)
             elevationC = (170, 70, 70)
             riverC = (20, 70, 220)
             continentC = (70, 70, 170)
@@ -138,6 +150,7 @@ class Display:
             advanceC = (190, 40, 190)
 
             if mode == "Terrain": terrainC = greyOut(terrainC)
+            if mode == "Simple": simpleC = greyOut(simpleC)
             elif mode == "Elevation": elevationC = greyOut(elevationC)
             elif mode == "River": riverC = greyOut(riverC)
             elif mode == "Continent": continentC = greyOut(continentC)
@@ -147,13 +160,15 @@ class Display:
                 advanceC = greyOut(advanceC)
 
             terrainBTN = pygame.draw.rect(screenSurface, terrainC, (self.width * 0.05, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
-            elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
-            riverBTN = pygame.draw.rect(screenSurface, riverC, (self.width * 0.19, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
-            continentBTN = pygame.draw.rect(screenSurface, continentC, (self.width * 0.33, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
-            regionBTN = pygame.draw.rect(screenSurface, regionC, (self.width * 0.40, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
-            advanceBTN = pygame.draw.rect(screenSurface, advanceC, (self.width * 0.60, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            simpleBTN = pygame.draw.rect(screenSurface, simpleC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.19, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            riverBTN = pygame.draw.rect(screenSurface, riverC, (self.width * 0.26, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            continentBTN = pygame.draw.rect(screenSurface, continentC, (self.width * 0.40, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            regionBTN = pygame.draw.rect(screenSurface, regionC, (self.width * 0.47, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            advanceBTN = pygame.draw.rect(screenSurface, advanceC, (self.width * 0.67, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             self.guiDisplayData["Buttons"] = {
                 "Terrain": terrainBTN,
+                "Simple": simpleBTN,
                 "Elevation": elevationBTN,
                 "River": riverBTN,
                 "Continent": continentBTN,
@@ -203,7 +218,7 @@ class Display:
                             if self.guiDisplayData.get("Mode") != buttonName:
                                 modifier = self.worldGen.fetchStageModifier()
                                 valid = False
-                                if buttonName == "Terrain": valid = True
+                                if buttonName == "Terrain" or buttonName == "Simple": valid = True
                                 elif buttonName == "Elevation" and modifier > 1: valid = True
                                 elif buttonName == "River" and modifier > 6: valid = True
                                 elif buttonName == "Continent" and modifier > 4: valid = True
@@ -249,7 +264,7 @@ class Display:
                         if self.guiDisplayData.get("Mode") != buttonName:
                             modifier = self.worldGen.fetchStageModifier()
                             valid = False
-                            if buttonName == "Terrain": valid = True
+                            if buttonName == "Terrain" or buttonName == "Simple": valid = True
                             elif buttonName == "Elevation" and modifier > 1: valid = True
                             elif buttonName == "River" and modifier > 6: valid = True
                             elif buttonName == "Continent" and modifier > 4: valid = True

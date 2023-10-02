@@ -24,6 +24,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 2
+            self.codex[terrainName]["Type"] = "Water"
         if seperateElement:
             terrainName = "Coastal"
             self.codex[terrainName] = dict()
@@ -40,6 +41,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 1.5
+            self.codex[terrainName]["Type"] = "Water"
         if seperateElement:
             terrainName = "Ice"
             self.codex[terrainName] = dict()
@@ -56,6 +58,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 0.5
+            self.codex[terrainName]["Type"] = "Water"
         if seperateElement:
             terrainName = "Tundra"
             self.codex[terrainName] = dict()
@@ -72,6 +75,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 0.25
+            self.codex[terrainName]["Type"] = "Flat"
         if seperateElement:
             terrainName = "Taiga"
             self.codex[terrainName] = dict()
@@ -88,6 +92,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 0.25
+            self.codex[terrainName]["Type"] = "Woodland"
         if seperateElement:
             terrainName = "Forest"
             self.codex[terrainName] = dict()
@@ -104,6 +109,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 0.40
+            self.codex[terrainName]["Type"] = "Woodland"
         if seperateElement:
             terrainName = "Grassland"
             self.codex[terrainName] = dict()
@@ -120,6 +126,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 0.35
+            self.codex[terrainName]["Type"] = "Flat"
         if seperateElement:
             terrainName = "Plains"
             self.codex[terrainName] = dict()
@@ -136,6 +143,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 0.15
+            self.codex[terrainName]["Type"] = "Flat"
         if seperateElement:
             terrainName = "Savannah"
             self.codex[terrainName] = dict()
@@ -152,6 +160,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = -0.75
+            self.codex[terrainName]["Type"] = "Woodland"
         if seperateElement:
             terrainName = "Desert"
             self.codex[terrainName] = dict()
@@ -168,6 +177,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = -2.25
+            self.codex[terrainName]["Type"] = "Flat"
         if seperateElement:
             terrainName = "Oasis"
             self.codex[terrainName] = dict()
@@ -184,6 +194,7 @@ class TerrainCodex:
             # self.codex[terrainName]["SelfBonus"] = 0
             # self.codex[terrainName]["RangeBonus"] = 0
             self.codex[terrainName]["WaterScore"] = 1
+            self.codex[terrainName]["Type"] = "Flat"
         if seperateElement:
             terrainName = "Steppe"
             self.codex[terrainName] = dict()
@@ -200,6 +211,7 @@ class TerrainCodex:
             self.codex[terrainName]["SelfBonus"] = 2
             self.codex[terrainName]["RangeBonus"] = 2
             self.codex[terrainName]["WaterScore"] = 1
+            self.codex[terrainName]["Type"] = "Elevated"
         if seperateElement:
             terrainName = "Hills"
             self.codex[terrainName] = dict()
@@ -216,6 +228,7 @@ class TerrainCodex:
             self.codex[terrainName]["SelfBonus"] = 4
             self.codex[terrainName]["RangeBonus"] = 3
             self.codex[terrainName]["WaterScore"] = -1.5
+            self.codex[terrainName]["Type"] = "Elevated"
         if seperateElement:
             terrainName = "Mountains"
             self.codex[terrainName] = dict()
@@ -232,6 +245,7 @@ class TerrainCodex:
             self.codex[terrainName]["SelfBonus"] = 5
             self.codex[terrainName]["RangeBonus"] = 5
             self.codex[terrainName]["WaterScore"] = -3
+            self.codex[terrainName]["Type"] = "Elevated"
 
         self.validateCodex()
 
