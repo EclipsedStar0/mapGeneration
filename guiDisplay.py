@@ -25,7 +25,7 @@ class Display:
 
         pygame.init()
         self.SCREEN = pygame.display.set_mode((self.width, self.height))
-        self.generateDisplay()
+        # self.generateDisplay()
 
     def generateDisplay(self):
         # Clear the stored data as we're regenerating the display from scratch
@@ -55,8 +55,9 @@ class Display:
             blueC = int(max(min(blueC - 75, 255), 20))
             return redC, greenC, blueC
 
-        def drawTheInterface():
+        def drawTheInterface(politicalOn=True):
             screenSurface = pygame.Surface((self.width, self.height))
+            politicalSurface = pygame.Surface((self.width, self.height), pygame.SRCALPHA, 32)
             screenSurface.fill((20, 10, 30))
             mode = self.guiDisplayData.get("Mode")
             if mode is None:
@@ -69,10 +70,10 @@ class Display:
                     nodeNum = row * self.columns + column
                     color = (0, 0, 0)
                     if mode == "Terrain":
-                        color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Color")
+                        color = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).getTerrainType()).get("Color")
                     elif mode == "Simple":
                         color = (0, 0, 0)
-                        typeOTerrain = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")).get("Type")
+                        typeOTerrain = self.terrainTypes.get(self.nodeTerrainData.get(nodeNum).getTerrainType()).get("Type")
                         if typeOTerrain == "Water":
                             color = (0, 0, 120)
                         elif typeOTerrain == "Woodland":
@@ -82,8 +83,8 @@ class Display:
                         elif typeOTerrain == "Elevated":
                             color = (40, 30, 10)
                     elif mode == "Elevation" or mode == "River":
-                        nodeElevation = self.nodeTerrainData.get(nodeNum).get("Elevation")
-                        designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                        nodeElevation = self.nodeTerrainData.get(nodeNum).getElevation()
+                        designatedTerrain = self.nodeTerrainData.get(nodeNum).getTerrainType()
                         if nodeElevation is None:
                             print(f'ERROR! Node #{self.nodeTerrainData.get(nodeNum)} is missing elevation!')
                         if nodeElevation < -4 or designatedTerrain == "Ocean":
@@ -113,31 +114,40 @@ class Display:
                         else:
                             color = (230, 10, 0)
                     elif mode == "Continent":
-                        continent = self.nodeTerrainData.get(nodeNum).get("Continent")
+                        continent = self.nodeTerrainData.get(nodeNum).getInfo().get("Continent")
                         color = (0, 0, 80)
                         if continent is None:
                             color = (0, 0, 0)
                         else:
-                            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                            designatedTerrain = self.nodeTerrainData.get(nodeNum).getTerrainType()
                             if designatedTerrain != "Ocean" and designatedTerrain != "Coastal":
                                 color = self.continentData.get(continent).get("Color")
                                 if nodeNum in self.continentData.get(continent).get("Elevated"):
                                     color = glow(color)
                     elif mode == "Region":
-                        region = self.nodeTerrainData.get(nodeNum).get("Region")
+                        region = self.nodeTerrainData.get(nodeNum).getInfo().get("Region")
                         color = (0, 0, 80)
                         if region is None:
                             color = (0, 0, 0)
                         else:
-                            designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                            designatedTerrain = self.nodeTerrainData.get(nodeNum).getTerrainType()
                             if designatedTerrain != "Ocean" and designatedTerrain != "Coastal":
                                 color = self.regionData.get(region).get("Color")
                                 if nodeNum in self.regionData.get(region).get("Elevated"):
                                     color = glow(color)
                     pygame.draw.rect(screenSurface, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
                     if mode == "River":
-                        if "River" in self.nodeTerrainData.get(nodeNum):
+                        if "River" in self.nodeTerrainData.get(nodeNum).getInfo():
                             pygame.draw.circle(screenSurface, (0, 70, 220), (self.adjustFactor * column + self.adjustFactor/2, self.adjustFactor * row + self.adjustFactor/2), self.adjustFactor*2/3)
+
+                    if politicalOn:
+                        cInfo = self.nodeTerrainData.get(nodeNum).getInfo().get("Controller")
+                        if cInfo is not None:
+                            if cInfo in self.gameObj.getCivilizationDict():
+                                cObj = self.gameObj.getCivilizationDict().get(cInfo)
+                                if cObj.getCapital() == row * self.columns + column:
+                                    pygame.draw.circle(politicalSurface, (230, 230, 230, 200), (self.adjustFactor * column + self.adjustFactor/2, self.adjustFactor * row + self.adjustFactor/2), self.adjustFactor*7/4)
+                                pygame.draw.circle(politicalSurface, (230, 0, 0, 150), (self.adjustFactor * column + self.adjustFactor/2, self.adjustFactor * row + self.adjustFactor/2), self.adjustFactor*3/4)
 
             # Draw bottom row buttons
             startHeight = self.height - self.addedHeight
@@ -147,25 +157,36 @@ class Display:
             riverC = (20, 70, 220)
             continentC = (70, 70, 170)
             regionC = (120, 120, 190)
+            politicalC = (220, 30, 150)
             advanceC = (190, 40, 190)
+            turnAC = (120, 120, 120)
+
+            fetchMod = self.worldGen.fetchStageModifier()
 
             if mode == "Terrain": terrainC = greyOut(terrainC)
             if mode == "Simple": simpleC = greyOut(simpleC)
-            elif mode == "Elevation": elevationC = greyOut(elevationC)
-            elif mode == "River": riverC = greyOut(riverC)
-            elif mode == "Continent": continentC = greyOut(continentC)
-            elif mode == "Region": regionC = greyOut(regionC)
+            elif mode == "Elevation" or fetchMod < 1: elevationC = greyOut(elevationC)
+            elif mode == "River" or fetchMod < 7: riverC = greyOut(riverC)
+            elif mode == "Continent" or fetchMod < 5: continentC = greyOut(continentC)
+            elif mode == "Region" or fetchMod < 6: regionC = greyOut(regionC)
+            elif mode == "Turn Advance" or fetchMod < 4: turnAC = greyOut(turnAC)
 
-            if self.worldGen.fetchStageModifier() > 5:
+            if politicalOn == "Political": politicalC = greyOut(politicalC)
+
+            if fetchMod > 5:
                 advanceC = greyOut(advanceC)
 
             terrainBTN = pygame.draw.rect(screenSurface, terrainC, (self.width * 0.05, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             simpleBTN = pygame.draw.rect(screenSurface, simpleC, (self.width * 0.12, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             elevationBTN = pygame.draw.rect(screenSurface, elevationC, (self.width * 0.19, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             riverBTN = pygame.draw.rect(screenSurface, riverC, (self.width * 0.26, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+
             continentBTN = pygame.draw.rect(screenSurface, continentC, (self.width * 0.40, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
             regionBTN = pygame.draw.rect(screenSurface, regionC, (self.width * 0.47, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
-            advanceBTN = pygame.draw.rect(screenSurface, advanceC, (self.width * 0.67, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            politicalBTN = pygame.draw.rect(screenSurface, politicalC, (self.width * 0.54, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+
+            advanceBTN = pygame.draw.rect(screenSurface, advanceC, (self.width * 0.74, startHeight + self.addedHeight / 3, self.width * 0.05, self.addedHeight / 3))
+            turnAdvBTN = pygame.draw.circle(screenSurface, turnAC, (self.width * 0.81 + self.addedHeight / 6, startHeight + self.addedHeight / 3 + self.addedHeight / 6), self.addedHeight / 6)
             self.guiDisplayData["Buttons"] = {
                 "Terrain": terrainBTN,
                 "Simple": simpleBTN,
@@ -173,13 +194,17 @@ class Display:
                 "River": riverBTN,
                 "Continent": continentBTN,
                 "Region": regionBTN,
-                "Advance Mode": advanceBTN
+                "Political": politicalBTN,
+                "Advance Mode": advanceBTN,
+                "Advance Turn": turnAdvBTN
             }
 
-            return screenSurface
+            return screenSurface, politicalSurface
 
-        returnedScreenSurface = drawTheInterface()
+        politicalMapModeEngaged = True
+        returnedScreenSurface, polSurface = drawTheInterface(politicalMapModeEngaged)
         self.SCREEN.blit(returnedScreenSurface, (0, 0))
+        self.SCREEN.blit(polSurface, (0, 0))
         pygame.mouse.set_visible(False)
         cursorSurface = pygame.Surface((self.width, self.height), pygame.SRCALPHA, 32)
         cursorSurface.fill((0, 0, 0, 0))
@@ -210,11 +235,11 @@ class Display:
                     if pygame.mouse.get_pressed()[0]:
                         # We are left-clicking
                         # noinspection PyTypeChecker
-                        btnCollision = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
-                        if btnCollision:
+                        mapModeBTNs = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
+                        if mapModeBTNs:
                             # noinspection PyUnresolvedReferences
-                            buttonName = btnCollision[0]
-                            buttonCollidedWith = btnCollision[1]
+                            buttonName = mapModeBTNs[0]
+                            buttonCollidedWith = mapModeBTNs[1]
                             if self.guiDisplayData.get("Mode") != buttonName:
                                 modifier = self.worldGen.fetchStageModifier()
                                 valid = False
@@ -224,17 +249,23 @@ class Display:
                                 elif buttonName == "Continent" and modifier > 4: valid = True
                                 elif buttonName == "Region" and modifier > 5: valid = True
                                 elif buttonName == "Advance Mode" and modifier < 7: valid = True
+                                elif buttonName == "Advance Turn" and modifier >= 4: valid = True
+                                elif buttonName == "Political" and modifier > 6: valid = True
                                 if valid:
-                                    if buttonName != "Advance Mode":
-                                        self.guiDisplayData["Mode"] = buttonName
-                                        returnedScreenSurface = drawTheInterface()
+                                    if buttonName != "Advance Mode" and buttonName != "Advance Turn":
+                                        if buttonName != "Political":
+                                            self.guiDisplayData["Mode"] = buttonName
+                                        else:
+                                            politicalMapModeEngaged = not politicalMapModeEngaged
+                                        returnedScreenSurface, polSurface = drawTheInterface(politicalMapModeEngaged)
                                         self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                                        self.SCREEN.blit(polSurface, (0, 0))
                                         cursorSurface.fill((0, 0, 0, 0))
                                         cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
                                         self.SCREEN.blit(cursorSurface, (0, 0))
                                         pygame.display.update()
                                     else:
-                                        if modifier < 7:
+                                        if buttonName == "Advance Mode" and modifier < 7:
                                             self.worldGen.advanceStageModifier()
                                             startTime = time.time()
                                             print('\nBegining generation...')
@@ -244,22 +275,31 @@ class Display:
                                             self.regionData = self.worldGen.getRegionData()
                                             self.nodeTerrainData = self.worldGen.getTerrainData()
                                             self.terrainTypes = self.worldGen.getTerrainTypes()
-                                            returnedScreenSurface = drawTheInterface()
+                                            returnedScreenSurface, polSurface = drawTheInterface()
                                             self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                                            self.SCREEN.blit(polSurface, (0, 0))
                                             cursorSurface.fill((0, 0, 0, 0))
                                             pos = pygame.mouse.get_pos()
                                             cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
                                             self.SCREEN.blit(cursorSurface, (0, 0))
                                             pygame.display.update()
+                                        elif buttonName == "Advance Turn" and modifier > 3:
+                                            pygame.draw.circle(cursorSurface, (0, 0, 0, 32), buttonCollidedWith.center, buttonCollidedWith.centerx-buttonCollidedWith.x)
+                                            cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                                            self.SCREEN.blit(cursorSurface, (0, 0))
+                                            pygame.display.update()
+
+                                            success = True
 
                 elif userEvent.type == pygame.MOUSEMOTION:
                     self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                    self.SCREEN.blit(polSurface, (0, 0))
                     cursorSurface.fill((0, 0, 0, 0))
                     # noinspection PyTypeChecker
-                    btnCollision = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
-                    if btnCollision:
-                        buttonName = btnCollision[0]
-                        buttonCollidedWith = btnCollision[1]
+                    mapModeBTNs = cursorCircle.collidedict(self.guiDisplayData.get("Buttons"), True)
+                    if mapModeBTNs:
+                        buttonName = mapModeBTNs[0]
+                        buttonCollidedWith = mapModeBTNs[1]
 
                         if self.guiDisplayData.get("Mode") != buttonName:
                             modifier = self.worldGen.fetchStageModifier()
@@ -269,9 +309,13 @@ class Display:
                             elif buttonName == "River" and modifier > 6: valid = True
                             elif buttonName == "Continent" and modifier > 4: valid = True
                             elif buttonName == "Region" and modifier > 5: valid = True
+                            elif buttonName == "Political" and modifier > 6: valid = True
                             elif buttonName == "Advance Mode" and modifier < 7: valid = True
-                            if valid:
+                            elif buttonName == "Advance Turn" and modifier > 3: valid = True
+                            if valid and buttonName != "Advance Turn":
                                 pygame.draw.rect(cursorSurface, (255, 255, 255, 32), buttonCollidedWith)
+                            elif valid:
+                                pygame.draw.circle(cursorSurface, (255, 255, 255, 32), buttonCollidedWith.center, buttonCollidedWith.centerx-buttonCollidedWith.x)
 
                     cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
                     self.SCREEN.blit(cursorSurface, (0, 0))

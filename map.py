@@ -6,12 +6,14 @@ from copy import deepcopy
 import pygame
 
 import customThread
+import node
 import terrainCodex
 
 
 # noinspection PyPep8Naming
 class Map:
-    def __init__(self, stageModifier=7, seedPara=None):
+    def __init__(self, gameObj, stageModifier=7, seedPara=None):
+        self.gameObj = gameObj
         self.width = 1024
         self.height = 576
 
@@ -54,7 +56,7 @@ class Map:
         self.terrainTypes = self.terrainCodex.getCodex()
 
         self.terrainTypesELE = ["Mountains", "Hills", "Steppe"]
-        self.terrainTypesWAT = ["Ocean, Coastal, Oasis, Ice"]
+        self.terrainTypesWAT = ["Ocean", "Coastal", "Oasis", "Ice"]
 
         self.terrainRecord = dict()
         for terrainType in self.terrainTypes:
@@ -74,12 +76,9 @@ class Map:
         # Set to 6 to do Region Organization
         self.stageModifier = stageModifier
 
+    def generateMap(self):
         startTime = time.time()
         print('Begining generation...')
-        self.generateMap()
-        print(f'We finished map generation-- this took {time.time() - startTime} seconds')
-
-    def generateMap(self):
 
         # NOTE-- we are redefining these here incase we regenerate the map in the GUI to advance a stage
         self.terrainRecord = dict()
@@ -661,7 +660,7 @@ class Map:
                                                 raise Exception
 
                                 # 16, 18, 19, 24
-                                if dist <= 18:
+                                if dist <= 17:
                                     proceed = False
                                     if basePoint2 in markedSubCat:
                                         baseData = markedSubCat.get(basePoint2)
@@ -759,7 +758,7 @@ class Map:
                                         proxyNodeNum = altPoint.get(regionElevatedNode)
                                         if proxyNodeNum != regionElevatedNode:
                                             dist = min(distToSplit(randNode, regionElevatedNode), dist)
-                                        if dist <= 18:
+                                        if dist <= 17:
                                             markedForChange.append(regionElevatedNode)
                                         else:
                                             if randNode in regionDataSave.get(continent):
@@ -768,7 +767,7 @@ class Map:
                                                     proxyNodeNum2 = altPoint.get(entry)
                                                     if proxyNodeNum2 != entry:
                                                         dist = min(distToSplit(proxyNodeNum2, regionElevatedNode), dist)
-                                                    if dist <= 18:
+                                                    if dist <= 17:
                                                         markedForChange.append(regionElevatedNode)
                                                         break
                                 if len(markedForChange) > 0:
@@ -815,6 +814,7 @@ class Map:
             for region in self.regionData:
 
                 numRivers = random.randint(0, 4)
+                self.riverDict[region] = dict()
                 for river in range(0, numRivers):
                     riverStartNode = self.regionData.get(region).get("Elevated")
                     riverStartNode = random.choices(riverStartNode, k=1)[0]
@@ -829,7 +829,7 @@ class Map:
                         currentNodeEle = self.nodeTerrainData.get(currentNode).get("Elevation")
                         adjacentNodes = []
                         elevationArr = []
-                        for pRow in range(currentNY - 1, 0, currentNY + 1 + 1):
+                        for pRow in range(currentNY - 1, currentNY + 1 + 1):
                             row = pRow % self.rows
                             for pColumn in range(currentNX - 1, currentNX + 1 + 1):
                                 column = pColumn % self.columns
@@ -862,7 +862,7 @@ class Map:
                             currentNodeEle = self.nodeTerrainData.get(currentNode).get("Elevation")
                             adjacentNodes = []
                             elevationArr = []
-                            for pRow in range(currentNY - 1, 0, currentNY + 1 + 1):
+                            for pRow in range(currentNY - 1, currentNY + 1 + 1):
                                 row = pRow % self.rows
                                 for pColumn in range(currentNX - 1, currentNX + 1 + 1):
                                     column = pColumn % self.columns
@@ -889,34 +889,45 @@ class Map:
                         "Start": riverStartNode,
                         "End": currentNode
                     }
-                    self.riverDict[region] = riverDict
+                    self.riverDict[region][riverStartNode] = riverDict
 
             print('-River Generation Complete')
 
             print('Begining River Spread')
-            for river in self.riverDict:
-                riverNodes = self.riverDict.get(river).get("Nodes")
-                for nodeNum in riverNodes:
-                    designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
-                    self.terrainRecord[designatedTerrain].remove(nodeNum)
-                    designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
-
-                    ranNum = random.randint(0, 100)
-                    if ranNum > 65 - 2 * len(riverNodes):
+            for region in self.riverDict:
+                for river in self.riverDict.get(region):
+                    riverNodes = self.riverDict.get(region).get(river).get("Nodes")
+                    for nodeNum in riverNodes:
+                        designatedTerrain = self.nodeTerrainData.get(nodeNum).get("ChosenTerrain")
+                        self.terrainRecord[designatedTerrain].remove(nodeNum)
                         designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
 
-                    self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
-                    self.nodeTerrainData[nodeNum]["WaterScore"] += self.terrainTypes.get(designatedTerrain).get("WaterScore")
-                    bEle = self.terrainTypes.get(designatedTerrain).get("EffectBonus")
-                    if "SelfBonus" in self.terrainTypes.get(designatedTerrain):
-                        bEle = self.terrainTypes.get(designatedTerrain).get("SelfBonus")
-                    self.nodeTerrainData[nodeNum]["Elevation"] += bEle / 2
-                    self.elevationGrid[nodeNum] += bEle / 2
-                    if designatedTerrain not in self.terrainRecord:
-                        self.terrainRecord[designatedTerrain] = set()
-                    self.terrainRecord[designatedTerrain].add(nodeNum)
+                        ranNum = random.randint(0, 100)
+                        if ranNum > 65 - 2 * len(riverNodes):
+                            designatedTerrain = random.choices(self.terrainTypes.get(designatedTerrain).get("Wet"), k=1)[0]
+
+                        self.nodeTerrainData[nodeNum]["ChosenTerrain"] = designatedTerrain
+                        self.nodeTerrainData[nodeNum]["WaterScore"] += self.terrainTypes.get(designatedTerrain).get("WaterScore")
+                        bEle = self.terrainTypes.get(designatedTerrain).get("EffectBonus")
+                        if "SelfBonus" in self.terrainTypes.get(designatedTerrain):
+                            bEle = self.terrainTypes.get(designatedTerrain).get("SelfBonus")
+                        self.nodeTerrainData[nodeNum]["Elevation"] += bEle / 2
+                        self.elevationGrid[nodeNum] += bEle / 2
+                        if designatedTerrain not in self.terrainRecord:
+                            self.terrainRecord[designatedTerrain] = set()
+                        self.terrainRecord[designatedTerrain].add(nodeNum)
 
             print('-River Spread Complete')
+
+
+        print('Initiating Nodes...')
+        nodeDict = dict()
+        for nodeNum in self.nodeTerrainData:
+            nodeDict[nodeNum] = node.Node(nodeNum, self.gameObj)
+        self.nodeTerrainData = nodeDict
+
+        print(f'We finished map generation-- this took {time.time() - startTime} seconds')
+
 
     def getAdjustFactor(self):
         return self.adjustFactor
@@ -930,6 +941,9 @@ class Map:
     def getContinentData(self):
         return self.continentData
 
+    def getRiverData(self):
+        return self.riverDict
+
     def getRegionData(self):
         return self.regionData
 
@@ -939,3 +953,12 @@ class Map:
     def advanceStageModifier(self):
         # NOTE-- this will result in regenerating the map
         self.stageModifier += 1
+
+    def getWaterTerrainTypes(self):
+        return self.terrainTypesWAT
+
+    def getRows(self):
+        return self.rows
+
+    def getColumns(self):
+        return self.columns
