@@ -20,6 +20,7 @@ class Game:
         random.seed(5779)
         civsInPlay = 1
         riverDict = self.worldMap.getRiverData()
+        if len(riverDict) < 1: civsInPlay = 0
         columns, rows = self.worldMap.getColumns(), self.worldMap.getRows()
         terrainData = self.worldMap.getTerrainData()
         waterTerrain = self.worldMap.getWaterTerrainTypes()

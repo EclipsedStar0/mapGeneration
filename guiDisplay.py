@@ -16,12 +16,17 @@ class Display:
         self.width, self.height = 1024, 576
         self.addedHeight = 50
         self.columns, self.rows = self.width // self.adjustFactor, self.height // self.adjustFactor
-
+        self.zoomLevel = 1
+        self.centerPosX, self.centerPosY = int(self.width / self.adjustFactor / 2), int(self.height / self.adjustFactor / 2)
+        self.Clock = pygame.time.Clock()
         # Adding some extra height just for buttons
         # Adding some extra height just for buttons
         self.height += self.addedHeight
 
         self.guiDisplayData = dict()
+
+        self.totalGUITime = 0
+        self.totalGUIRuns = 0
 
         pygame.init()
         self.SCREEN = pygame.display.set_mode((self.width, self.height))
@@ -56,6 +61,7 @@ class Display:
             return redC, greenC, blueC
 
         def drawTheInterface(politicalOn=True):
+            guiStart = time.time()
             screenSurface = pygame.Surface((self.width, self.height))
             politicalSurface = pygame.Surface((self.width, self.height), pygame.SRCALPHA, 32)
             screenSurface.fill((20, 10, 30))
@@ -65,8 +71,33 @@ class Display:
                 mode = "Terrain"
 
             # Draw Terrain Data
+            rowArr = []
+            adjustedRowArr = []
+            columnArr = []
+            adjustedColumnArr = []
+            '''searchRadiusY = int((self.rows * self.adjustFactor) // pow(2, self.zoomLevel - 1))
+            searchRadiusX = int((self.columns * self.adjustFactor) // pow(2, self.zoomLevel - 1))
+            for guiY in range(self.centerPosY - searchRadiusY, self.centerPosY + searchRadiusY):
+                row = guiY % self.rows
+                pRow = guiY
+                for guiX in range(self.centerPosX - searchRadiusX, self.centerPosX + searchRadiusX):
+                    column = guiX % self.columns
+                    pColumn = guiX'''
+
+            xFactor = int(self.width / 2 - self.centerPosX)
+            yFactor = int((self.height - self.addedHeight) / 2 - self.centerPosY)
             for row in range(0, self.rows):
                 for column in range(0, self.columns):
+
+            # for pRow in range(int(self.centerPosY - self.rows // self.zoomLevel), int(self.centerPosY + self.rows // self.zoomLevel)):
+                # row = pRow % self.rows
+                # rowArr.append(pRow)
+                # adjustedRowArr.append(row)
+                # for pColumn in range(int(self.centerPosX - self.columns // (2 * self.zoomLevel)), int(self.centerPosX + self.columns // (2 * self.zoomLevel))):
+                    # column = pColumn % self.columns
+                    # if len(rowArr) == 1:
+                        # columnArr.append(pColumn)
+                        # adjustedColumnArr.append(column)
                     nodeNum = row * self.columns + column
                     color = (0, 0, 0)
                     if mode == "Terrain":
@@ -135,10 +166,15 @@ class Display:
                                 color = self.regionData.get(region).get("Color")
                                 if nodeNum in self.regionData.get(region).get("Elevated"):
                                     color = glow(color)
-                    pygame.draw.rect(screenSurface, color, (self.adjustFactor * column, self.adjustFactor * row, self.adjustFactor, self.adjustFactor))
+                    pygame.draw.rect(screenSurface, color, (self.adjustFactor * ((column + xFactor) % self.columns) * self.zoomLevel, self.adjustFactor * ((row + yFactor) % self.rows) * self.zoomLevel, self.adjustFactor * self.zoomLevel, self.adjustFactor * self.zoomLevel))
+
+                    # print("---------------")
+                    # print(pRow, pColumn)
+                    # print(self.adjustFactor * pColumn * self.zoomLevel, self.adjustFactor * pRow * self.zoomLevel, self.adjustFactor * self.zoomLevel)
+
                     if mode == "River":
                         if "River" in self.nodeTerrainData.get(nodeNum).getInfo():
-                            pygame.draw.circle(screenSurface, (0, 70, 220), (self.adjustFactor * column + self.adjustFactor/2, self.adjustFactor * row + self.adjustFactor/2), self.adjustFactor*2/3)
+                            pygame.draw.circle(screenSurface, (0, 70, 220), (self.adjustFactor * ((column + xFactor) % self.columns) * self.zoomLevel + self.adjustFactor/2 * self.zoomLevel, self.adjustFactor * ((row + yFactor) % self.rows) * self.zoomLevel + self.adjustFactor/2 * self.zoomLevel), self.adjustFactor*2/3 * self.zoomLevel)
 
                     if politicalOn:
                         cInfo = self.nodeTerrainData.get(nodeNum).getInfo().get("Controller")
@@ -146,8 +182,23 @@ class Display:
                             if cInfo in self.gameObj.getCivilizationDict():
                                 cObj = self.gameObj.getCivilizationDict().get(cInfo)
                                 if cObj.getCapital() == row * self.columns + column:
-                                    pygame.draw.circle(politicalSurface, (230, 230, 230, 200), (self.adjustFactor * column + self.adjustFactor/2, self.adjustFactor * row + self.adjustFactor/2), self.adjustFactor*7/4)
-                                pygame.draw.circle(politicalSurface, (230, 0, 0, 150), (self.adjustFactor * column + self.adjustFactor/2, self.adjustFactor * row + self.adjustFactor/2), self.adjustFactor*3/4)
+                                    pygame.draw.circle(politicalSurface, (230, 230, 230, 200), (self.adjustFactor * ((column + xFactor) % self.columns) * self.zoomLevel + self.adjustFactor/2 * self.zoomLevel, self.adjustFactor * ((row + yFactor) % self.rows) * self.zoomLevel + self.adjustFactor/2 * self.zoomLevel), self.adjustFactor*7/4 * self.zoomLevel)
+                                pygame.draw.circle(politicalSurface, (230, 0, 0, 150), (self.adjustFactor * ((column + xFactor) % self.columns) * self.zoomLevel + self.adjustFactor/2 * self.zoomLevel, self.adjustFactor * ((row + yFactor) % self.rows) * self.zoomLevel + self.adjustFactor/2 * self.zoomLevel), self.adjustFactor*3/4 * self.zoomLevel)
+
+            '''for row in range(self.rows):
+                if row not in adjustedRowArr:
+                    print(f'Missing row {row}')
+            for column in range(self.columns):
+                if column not in adjustedColumnArr:
+                    print(f'Missing column {column}')
+            print("-------------------------------------------------------------------------------------------------------")
+            print(rowArr)
+            print(adjustedRowArr)
+            print()
+            print(columnArr)
+            print(adjustedColumnArr)
+            print(min(adjustedRowArr), max(adjustedRowArr))
+            print(min(adjustedColumnArr), max(adjustedColumnArr))'''
 
             # Draw bottom row buttons
             startHeight = self.height - self.addedHeight
@@ -199,6 +250,8 @@ class Display:
                 "Advance Turn": turnAdvBTN
             }
 
+            self.totalGUITime += time.time() - guiStart
+            self.totalGUIRuns += 1
             return screenSurface, politicalSurface
 
         politicalMapModeEngaged = True
@@ -219,17 +272,59 @@ class Display:
         success = False
         while not success:
             for userEvent in pygame.event.get():
+                print(f'{self.totalGUITime / self.totalGUIRuns:.6f}')
                 pos = pygame.mouse.get_pos()
                 playerRect = pygame.Rect(pos[0] - 1, pos[1] - 1, 2, 2)
+                seperator = True
+                if seperator:
+                    keysHeldDown = pygame.key.get_pressed()
+                    updateMap = False
+                    if keysHeldDown[pygame.K_w]:
+                        self.centerPosY -= 2
+                        updateMap = True
+                    elif keysHeldDown[pygame.K_s]:
+                        self.centerPosY += 2
+                        updateMap = True
+                    if keysHeldDown[pygame.K_a]:
+                        self.centerPosX -= 2
+                        updateMap = True
+                    elif keysHeldDown[pygame.K_d]:
+                        self.centerPosX += 2
+                        updateMap = True
+
+                    if updateMap:
+                        self.centerPosX %= self.columns
+                        self.centerPosY %= self.rows
+                        returnedScreenSurface, polSurface = drawTheInterface()
+                        self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                        self.SCREEN.blit(polSurface, (0, 0))
+                        cursorSurface.fill((0, 0, 0, 0))
+                        pos = pygame.mouse.get_pos()
+                        cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                        self.SCREEN.blit(cursorSurface, (0, 0))
+                        pygame.display.update()
 
                 if userEvent.type == pygame.QUIT:
                     success = True
                     self.gameObj.endGame()
 
-                elif userEvent.type == pygame.KEYDOWN:
-                    if userEvent.key == pygame.K_ESCAPE:
-                        success = True
-                        self.gameObj.endGame()
+                elif userEvent.type == pygame.MOUSEWHEEL:
+                    if userEvent.y < 0:
+                        self.zoomLevel -= 1
+                    else: self.zoomLevel += 1
+                    self.zoomLevel = min(max(self.zoomLevel, 1), 16)
+                    self.centerPosX += ((pos[0] / (self.adjustFactor * self.zoomLevel)) - self.centerPosX)
+                    self.centerPosY += ((pos[1] / (self.adjustFactor * self.zoomLevel)) - self.centerPosY)
+                    self.centerPosX %= self.columns
+                    self.centerPosY %= self.rows
+                    returnedScreenSurface, polSurface = drawTheInterface()
+                    self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                    self.SCREEN.blit(polSurface, (0, 0))
+                    cursorSurface.fill((0, 0, 0, 0))
+                    pos = pygame.mouse.get_pos()
+                    cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                    self.SCREEN.blit(cursorSurface, (0, 0))
+                    pygame.display.update()
 
                 elif userEvent.type == pygame.MOUSEBUTTONDOWN:
                     if pygame.mouse.get_pressed()[0]:
@@ -320,6 +415,55 @@ class Display:
                     cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
                     self.SCREEN.blit(cursorSurface, (0, 0))
                     pygame.display.update()
+
+                '''proxyCX, proxyCY = self.centerPosX, self.centerPosY
+                numLevels = 6
+                if pos[0] < self.width // 64:
+                    threshold = self.width // 64
+                    for level in range(0, numLevels):
+                        if pos[0] < threshold:
+                            threshold /= 2
+                            self.centerPosX -= pow(2, level)
+                        else: break
+
+                elif pos[0] > 63 * self.width // 64:
+                    threshold = 63 * self.width // 64
+                    for level in range(0, numLevels):
+                        if threshold < pos[0]:
+                            threshold = (self.width + threshold) / 2
+                            self.centerPosX += pow(2, level)
+                        else: break
+
+                if pos[1] < (self.height - self.addedHeight) // 64:
+                    threshold = (self.height - self.addedHeight) // 64
+                    for level in range(0, numLevels):
+                        if pos[1] < threshold:
+                            self.centerPosY += pow(2, level)
+                            threshold /= 2
+                        else: break
+
+                elif pos[1] > 63 * (self.height - self.addedHeight) // 64:
+                    threshold = 63 * (self.height - self.addedHeight) // 64
+                    for level in range(0, numLevels):
+                        if threshold < pos[1]:
+                            threshold = (self.height - self.addedHeight + threshold) / 2
+                            self.centerPosY -= pow(2, level)
+                        else: break
+
+                self.centerPosY %= self.rows
+                self.centerPosX %= self.columns
+                if proxyCX != self.centerPosX or proxyCY != self.centerPosY:
+                    print(self.centerPosX, self.centerPosY)
+                    returnedScreenSurface, polSurface = drawTheInterface()
+                    self.SCREEN.blit(returnedScreenSurface, (0, 0))
+                    self.SCREEN.blit(polSurface, (0, 0))
+                    cursorSurface.fill((0, 0, 0, 0))
+                    pos = pygame.mouse.get_pos()
+                    cursorCircle = pygame.draw.circle(cursorSurface, (40, 240, 200, 255), (pos[0], pos[1]), 6)
+                    self.SCREEN.blit(cursorSurface, (0, 0))
+                    pygame.display.update()'''
+
+            self.Clock.tick(25)
 
     def getDisplay(self):
         return self.SCREEN
